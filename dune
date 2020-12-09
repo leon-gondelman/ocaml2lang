@@ -1,3 +1,0 @@
-(executable
-  (libraries ocaml-compiler-libs.common)
-  (name main))

@@ -1,10 +1,3 @@
-let fname = Sys.argv.(1)
-
-let ptree =
-  let cin = open_in fname in
-  let lb = Lexing.from_channel cin in
-  Parser.implementation Lexer.token lb
-
 type ident = string
 
 type gvar =
@@ -162,6 +155,8 @@ let pp_decl fmt = function
   | DDefinition (id, typ, expr) ->
      fprintf fmt "Definition %s : %a := %a." id pp_typ typ pp_expr expr
 
+
+
 open Parsetree
 open Location
 open Longident
@@ -239,9 +234,6 @@ and construct params = function
      end
   | _ -> assert false (*TODO*)
 
-let () =
-  let aneris = structure ptree in
-  List.iter (fun str -> Format.eprintf "%a@." pp_decl str) aneris
 
     (* type un_op =
  *   | NegOp | MinusUnOp | StringOfInt | IntOfString | StringLength

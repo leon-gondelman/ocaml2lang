@@ -1,0 +1,3 @@
+(library
+  (name ocaml2lang)
+  (libraries ocaml-compiler-libs.common))
