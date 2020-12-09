@@ -77,6 +77,8 @@ and construct params = function
         Eapp (mk_gvar "::", [expression params e1; expression params e2])
      | _ -> assert false
      end
+  | ({txt = Lident "[]"; loc = _}, None) ->
+    Evalue NONEV
   | _ -> assert false (*TODO*)
 
 
@@ -89,3 +91,33 @@ and construct params = function
  *   | ShiftLOp | ShiftROp (\* Shifts *\)
  *   | LeOp | LtOp | EqOp (\* Relations *\)
  *   | StringApp *)
+
+let ptree_of_string s =
+  let lb = Lexing.from_string s in
+  Parser.implementation Lexer.token lb
+
+let%expect_test _ =
+  Lang.pp_decls Format.std_formatter
+    (structure (ptree_of_string "let f x = x"));
+  [%expect {| Definition f : base_lang.val := λ: "x", "x". |}]
+
+let%expect_test _ =
+  Lang.pp_decls Format.std_formatter
+    (structure (ptree_of_string "let f x = y"));
+  [%expect {| Definition f : base_lang.val := λ: "x", y. |}]
+
+let%expect_test _ =
+  Lang.pp_decls Format.std_formatter
+    (structure (ptree_of_string "let x = [1;2;3]"));
+  [%expect{|
+    Definition x : base_lang.val :=
+      list_cons #1 (list_cons #2 (list_cons #3 NONEV)). |}]
+
+let%expect_test _ =
+  Lang.pp_decls Format.std_formatter
+    (structure (ptree_of_string "let f x = List.fold_left (fun x y -> x y z) [1;2;3]"));
+  [%expect{|
+    Definition f : base_lang.val :=
+      λ: "x",
+        list_fold (λ: "x" "y", "x" "y" z)
+          (list_cons #1 (list_cons #2 (list_cons #3 NONEV))). |}]

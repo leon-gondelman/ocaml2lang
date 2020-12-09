@@ -104,7 +104,7 @@ let pp_litv fmt = function
 
 let rec pp_value fmt = function
   | LitV bl -> fprintf fmt "%a" pp_litv bl
-  | PairV (v1, v2) -> fprintf fmt "(%a, %a)" pp_value v1 pp_value v2
+  | PairV (v1, v2) -> fprintf fmt "@[<1>(%a,@ %a)@]" pp_value v1 pp_value v2
   | NONEV ->  fprintf fmt "NONEV"
   | SOMEV v ->
      if is_complex_value v
@@ -119,14 +119,9 @@ let rec pp_expr fmt = function
   | Evalue v ->  fprintf fmt "%a" pp_value v
   | Evar v -> fprintf fmt "%a" pp_var v
   | Efun (idl, e) ->
-     if complex_syntax e then
-       fprintf fmt "@[<hov 2>λ: %a,@\n%a@]"
-         (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
-         pp_expr e
-     else
-       fprintf fmt "@[λ: %a, %a@]"
-         (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
-         pp_expr e
+    fprintf fmt "@[<hov 2>λ: %a,@ %a@]"
+      (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
+      pp_expr e
   | Eapp (e1, el) -> pp_app fmt e1 el
   | _ -> assert false (*todo*)
 
@@ -138,12 +133,12 @@ and pp_app fmt e el =
      begin
        try
          let str = Hashtbl.find gvartbl (str_of_gvar v) in
-         fprintf fmt "%s %a" str (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
+         fprintf fmt "@[<hov 2>%s@ %a@]" str (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
        with Not_found ->
-         fprintf fmt "%a %a" pp_gvar v
+         fprintf fmt "@[<hov 2>%a@ %a@]" pp_gvar v
            (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
      end
-  | _ -> fprintf fmt "%a %a" pp_expr_app e
+  | _ -> fprintf fmt "@[<hov 2>%a@ %a@]" pp_expr_app e
            (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
 
 and pp_expr_pr fmt e =
@@ -158,7 +153,7 @@ and pp_expr_app fmt = function
 
 let pp_decl fmt = function
   | DDefinition (id, typ, expr) ->
-     fprintf fmt "Definition %s : %a := %a." id pp_typ typ pp_expr expr
+     fprintf fmt "@[<2>Definition %s : %a :=@ @[%a@].@]" id pp_typ typ pp_expr expr
 
 let pp_decls fmt decls =
   fprintf fmt "@[<v>";
