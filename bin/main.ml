@@ -9,4 +9,4 @@ let ptree =
 
 let () =
   let aneris = Translate.structure ptree in
-  List.iter (fun str -> Format.eprintf "%a@." Lang.pp_decl str) aneris
+  Lang.pp_decls Format.std_formatter aneris

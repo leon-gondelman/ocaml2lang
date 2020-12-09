@@ -156,3 +156,7 @@ let pp_decl fmt = function
   | DDefinition (id, typ, expr) ->
      fprintf fmt "Definition %s : %a := %a." id pp_typ typ pp_expr expr
 
+let pp_decls fmt decls =
+  fprintf fmt "@[<v>";
+  List.iter (fprintf fmt "%a@," pp_decl) decls;
+  fprintf fmt "@]"
