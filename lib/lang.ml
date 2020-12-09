@@ -4,7 +4,11 @@ type gvar =
   | Gvar of ident
   | Gdot of gvar * ident
 
-type var = Vlvar of ident | Vgvar of gvar
+type var =
+  (* Local name bound by a heap-lang binder *)
+  | Vlvar of ident
+  (* Global name bound at the meta-level (e.g. as a Coq definition) *)
+  | Vgvar of gvar
 
 type base_lit =
   | LitInt of int
@@ -54,7 +58,7 @@ let rec str_of_gvar = function
   | Gvar  s -> s
   | Gdot (g, s) -> (str_of_gvar g) ^ "." ^ s
 
-(* XXX do the conversion when converting to lang instead of at printing time? *)
+(* XXX should this be done in an earlier pass rather that at printing time? *)
 let gvartbl = Hashtbl.create 53
 let _ =
   List.iter (fun (kwd, tok) -> Hashtbl.add gvartbl kwd tok)
