@@ -8,5 +8,5 @@ let ptree =
   Parser.implementation Lexer.token lb
 
 let () =
-  let aneris = structure ptree in
-  List.iter (fun str -> Format.eprintf "%a@." pp_decl str) aneris
+  let aneris = Translate.structure ptree in
+  List.iter (fun str -> Format.eprintf "%a@." Lang.pp_decl str) aneris
