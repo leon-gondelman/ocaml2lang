@@ -1,22 +1,24 @@
-open Parsetree
 open Location
 open Longident
+
+module P = Parsetree
 
 open Lang
 
 let mk_gvar s = Evar (Vgvar (Gvar s))
 
-let name_of_pat pat = match pat.ppat_desc with
+let rec name_of_pat pat = match pat.P.ppat_desc with
   | Ppat_any -> "_"
   | Ppat_var s -> s.txt
+  | Ppat_constraint (p, _) -> name_of_pat p
   | _ -> assert false (* TODO *)
 
 let rec structure str =
   List.flatten (List.map structure_item str)
 
-and structure_item str_item = match str_item.pstr_desc with
+and structure_item str_item = match str_item.P.pstr_desc with
   | Pstr_value (rec_flag, [val_bind]) ->
-      ignore (rec_flag);
+      ignore (rec_flag); (* TODO *)
       let id, expr = value_binding val_bind in
       [DDefinition (id, TyVal, expr)]
   | Pstr_type _ ->
@@ -30,13 +32,19 @@ and longident params = function
   | Lapply _ -> assert false (* TODO *)
   | Lident s ->
       if List.mem s params then Vlvar s else Vgvar (Gvar s)
-  | Ldot (t, s) ->
-      let v = longident [] t in
+  | Ldot (t, s) -> let v = longident [] t in
       match v with
       | Vgvar x -> Vgvar (Gdot (x, s))
       | Vlvar _ -> assert false
 
-and expression params expr = match expr.pexp_desc with
+and expression params expr =
+  let is_fst P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "fst"; _} -> true
+    | _ -> false in
+  let is_snd P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "snd"; _} -> true
+    | _ -> false in
+  match expr.pexp_desc with
   | Pexp_constant c -> Evalue (LitV (constant c))
   | Pexp_construct (c,o) -> construct params (c,o)
   | Pexp_ident t -> Evar (longident params t.txt)
@@ -48,6 +56,10 @@ and expression params expr = match expr.pexp_desc with
         | Efun (il, e) -> Efun (id :: il, e)
         | _ -> Efun ([id], expr)
       end
+  | Pexp_apply (f, [(_, e)]) when is_fst f ->
+      EFst (expression params e)
+  | Pexp_apply (f, [(_, e)]) when is_snd f ->
+      ESnd (expression params e)
   | Pexp_apply (e1, el) ->
       let expr1 = expression params e1 in
       let (_, args) = List.split el in
@@ -57,7 +69,27 @@ and expression params expr = match expr.pexp_desc with
       Etuple (List.map (expression params) expr_list)
   | Pexp_tuple _ ->
       assert false (* TODO *)
+  | Pexp_match (e, [c1; c2]) ->
+      let expr = expression params e in
+      Ecase (expr, pattern params c1, pattern params c2)
+  | Pexp_match _ ->
+      assert false (* TODO *)
+  | Pexp_constraint (e, _) ->
+      expression params e
+  | Pexp_let (Recursive, _, _) ->
+      assert false (* TODO *)
   | _ -> assert false (* TODO *)
+
+and pattern params P.{pc_lhs; pc_rhs; _} =
+  let rec pat_desc P.{ppat_desc; _} = match ppat_desc with
+    | P.Ppat_any        -> Ppat_any
+    | Ppat_var {txt; _} -> Ppat_var txt
+    | Ppat_construct ({txt; _}, p) ->
+        Ppat_apply (longident params txt, Option.map pat_desc p)
+    | _ -> assert false (* TODO *) in
+  let pc_lhs = pat_desc pc_lhs in
+  let pc_rhs = expression params pc_rhs in
+  { pc_lhs; pc_rhs }
 
 and constant = function
     Pconst_integer (t, _) -> LitInt (int_of_string t)

@@ -34,8 +34,22 @@ type expr =
   | Evalue of value
   | Etuple of expr list
   | Efun   of (ident list) * expr
+  | Erec   of ident * ident * expr
+  | EFst   of expr
+  | ESnd   of expr
   | Eapp   of expr * (expr list)
   | Esome  of expr
+  | Ecase  of expr * case * case
+
+and case = {
+  pc_lhs: pattern;
+  pc_rhs: expr;
+}
+
+and pattern =
+  | Ppat_any
+  | Ppat_var   of string
+  | Ppat_apply of var * pattern option
 
   (* | Elet of ident * expr * expr *)
 
@@ -80,8 +94,16 @@ let pp_typ fmt = function
 
 let pp_lvar fmt s = fprintf fmt "\"%s\"" s
 
+(** Driver mechanism (WIP)
+
+    To be converted into a proper conversion language *)
+let query_syntax = function
+  | "Some" -> "SOME"
+  | "None" -> "NONE" (* TODO: if it is a list, print it as `[]` *)
+  | s -> s
+
 let rec pp_gvar fmt = function
-  | Gvar s -> fprintf fmt "%s" s
+  | Gvar s -> fprintf fmt "%s" (query_syntax s)
   | Gdot (q, s) -> fprintf fmt "%a.%s" pp_gvar q s
 
 
@@ -107,31 +129,50 @@ let pp_litv fmt = function
 let rec pp_value fmt = function
   | LitV bl -> fprintf fmt "%a" pp_litv bl
   | PairV (v1, v2) -> fprintf fmt "@[<1>(%a,@ %a)@]" pp_value v1 pp_value v2
-  | NONEV ->  fprintf fmt "NONEV"
+  | NONEV ->  fprintf fmt "NONE"
   | SOMEV v ->
      if is_complex_value v
-     then fprintf fmt "SOMEV (%a)" pp_value v
-     else fprintf fmt "SOMEV %a" pp_value v
+     then fprintf fmt "SOME (%a)" pp_value v
+     else fprintf fmt "SOME %a" pp_value v
   | InjLV _ -> assert false (*TODO*)
   | InjRV _ -> assert false (*TODO*)
 
 (** Printing of expressions *)
 
-let rec pp_expr fmt = function
-  | Evalue v ->  fprintf fmt "%a" pp_value v
-  | Evar v -> fprintf fmt "%a" pp_var v
-  | Efun (idl, e) ->
-    fprintf fmt "@[<hov 2>λ: %a,@ %a@]"
-      (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
-      pp_expr e
-  | Eapp (e1, el) -> pp_app fmt e1 el
-  | Etuple l ->
-      fprintf fmt "(@[<hov>%a@])"
-        (Format.pp_print_list ~pp_sep:pp_comma pp_expr) l
-  | Esome e ->
-      fprintf fmt "SOME %a" pp_expr e
+let protect_on b s =
+  if b then "@[<1>(" ^^ s ^^ ")@]"
+  else s
 
-and pp_app fmt e el =
+let rec pp_expr ?(paren=false) fmt = function
+  | Evalue v -> fprintf fmt "%a" pp_value v
+  | Evar v -> fprintf fmt "%a" pp_var v
+  | Efun (idl, e) -> fprintf fmt "@[<hov 2>λ: %a,@ %a@]"
+      (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
+      (pp_expr ~paren) e
+  | Eapp (e1, el) -> pp_app ~paren fmt e1 el
+  | Erec _ -> assert false (* TODO *)
+  | Etuple l -> fprintf fmt "(@[<hov>%a@])"
+      (Format.pp_print_list ~pp_sep:pp_comma pp_expr) l
+  | EFst e ->
+      fprintf fmt (protect_on paren "Fst %a") (pp_expr ~paren:true) e
+  | ESnd e ->
+      fprintf fmt (protect_on paren "Snd %a") (pp_expr ~paren:true) e
+  | Esome e ->
+      fprintf fmt "SOME %a" (pp_expr ~paren:true) e
+  | Ecase (e, c1, c2) ->
+      fprintf fmt "match: %a with@\n@[<hov>%a@\n| %a@]@\nend"
+        (pp_expr ~paren) e pp_case c1 pp_case c2
+
+and pp_pattern fmt = function
+  | Ppat_any -> fprintf fmt "_"
+  | Ppat_var s -> fprintf fmt "%s" s
+  | Ppat_apply (v, None) -> fprintf fmt "%a" pp_var v
+  | Ppat_apply (v, Some p) -> fprintf fmt "%a %a" pp_var v pp_pattern p
+
+and pp_case fmt {pc_lhs; pc_rhs} =
+  fprintf fmt "%a =>@ %a" pp_pattern pc_lhs (pp_expr ~paren:false) pc_rhs
+
+and pp_app ?(paren=false) fmt e el =
   match (e, el) with
   | (Evar (Vgvar Gvar s), [e1;e2]) when s = "+" || s = "-" || s = "*" ->
      fprintf fmt "(%a %s %a)" pp_expr_pr e1 s pp_expr_pr e2
@@ -141,15 +182,15 @@ and pp_app fmt e el =
          let str = Hashtbl.find gvartbl (str_of_gvar v) in
          fprintf fmt "@[<hov 2>%s@ %a@]" str (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
        with Not_found ->
-         fprintf fmt "@[<hov 2>%a@ %a@]" pp_gvar v
+         fprintf fmt (protect_on paren "@[<hov 2>%a@ %a@]") pp_gvar v
            (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
      end
-  | _ -> fprintf fmt "@[<hov 2>%a@ %a@]" pp_expr_app e
+  | _ -> fprintf fmt (protect_on paren "@[<hov 2>%a@ %a@]") pp_expr_app e
            (Format.pp_print_list ~pp_sep:pp_space pp_expr_app) el
 
 and pp_expr_pr fmt e =
-  if complex_syntax e then fprintf fmt "(%a)" pp_expr e
-  else  fprintf fmt "%a" pp_expr e
+  if complex_syntax e then fprintf fmt "(%a)" (pp_expr ~paren:false) e
+  else  fprintf fmt "%a" (pp_expr ~paren:false) e
 
 and pp_expr_app fmt = function
   | Evar (Vlvar s) -> fprintf fmt "%a" pp_lvar s
@@ -159,7 +200,8 @@ and pp_expr_app fmt = function
 
 let pp_decl fmt = function
   | DDefinition (id, typ, expr) ->
-     fprintf fmt "@[<2>Definition %s : %a :=@ @[%a@].@]" id pp_typ typ pp_expr expr
+      fprintf fmt "@[<2>Definition %s : %a :=@ @[%a@].@]"
+        id pp_typ typ (pp_expr ~paren:false) expr
 
 let pp_decls fmt decls =
   fprintf fmt "@[<v>";
