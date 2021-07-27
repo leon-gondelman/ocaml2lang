@@ -30,11 +30,12 @@ type value =
   | SOMEV of value
 
 type expr =
-  | Evar of var
+  | Evar   of var
   | Evalue of value
-  | Efun of (ident list) * expr
-  | Eapp of expr * (expr list)
-  | Esome of expr
+  | Etuple of expr list
+  | Efun   of (ident list) * expr
+  | Eapp   of expr * (expr list)
+  | Esome  of expr
 
   (* | Elet of ident * expr * expr *)
 
@@ -87,6 +88,7 @@ let rec pp_gvar fmt = function
 let pp_param fmt s = fprintf fmt "\"%s\"" s
 
 let pp_space ppf () = Format.fprintf ppf "@ "
+let pp_comma ppf () = Format.fprintf ppf ",@ "
 
 let pp_var fmt = function
   | Vlvar s -> fprintf fmt "%a" pp_lvar s
@@ -123,7 +125,11 @@ let rec pp_expr fmt = function
       (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
       pp_expr e
   | Eapp (e1, el) -> pp_app fmt e1 el
-  | _ -> assert false (*todo*)
+  | Etuple l ->
+      fprintf fmt "(@[<hov>%a@])"
+        (Format.pp_print_list ~pp_sep:pp_comma pp_expr) l
+  | Esome e ->
+      fprintf fmt "SOME %a" pp_expr e
 
 and pp_app fmt e el =
   match (e, el) with
