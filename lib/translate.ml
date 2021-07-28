@@ -44,6 +44,12 @@ and expression params expr =
   let is_snd P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "snd"; _} -> true
     | _ -> false in
+  let rec loop P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_fun (_, _, pat, e) ->
+        let args, expr = loop e in
+        let id = name_of_pat pat in
+        id :: args, expr
+    | e -> [], e in
   match expr.pexp_desc with
   | Pexp_constant c -> Evalue (LitV (constant c))
   | Pexp_construct (c,o) -> construct params (c,o)
@@ -76,7 +82,7 @@ and expression params expr =
       assert false (* TODO *)
   | Pexp_constraint (e, _) ->
       expression params e
-  | Pexp_let (Recursive, _, _) ->
+  | Pexp_let (Recursive, [vb], e) ->
       assert false (* TODO *)
   | _ -> assert false (* TODO *)
 

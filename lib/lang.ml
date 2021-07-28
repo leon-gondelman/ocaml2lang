@@ -34,7 +34,7 @@ type expr =
   | Evalue of value
   | Etuple of expr list
   | Efun   of (ident list) * expr
-  | Erec   of ident * ident * expr
+  | Erec   of ident * ident list * expr
   | EFst   of expr
   | ESnd   of expr
   | Eapp   of expr * (expr list)

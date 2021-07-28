@@ -18,12 +18,19 @@ let list_tail = fun l ->
   | Some a -> snd a
   | None -> None
 
-let list_fold =
-  let rec fold handler acc l =
-    match l with
-    | Some a -> let f = fst a in
-        let s = snd a in
-        let acc = (handler acc f) in
-        fold handler acc s
-    | None -> acc
-  in fold
+(* let list_length =
+ *   let rec length l =
+ *     match l with
+ *     | None -> 0
+ *     | Some a -> 1 + length (snd a) in
+ *   length *)
+
+(* let list_fold =
+ *   let rec fold handler acc l =
+ *     match l with
+ *     | Some a -> let f = fst a in
+ *         let s = snd a in
+ *         let acc = (handler acc f) in
+ *         fold handler acc s
+ *     | None -> acc
+ *   in fold *)
