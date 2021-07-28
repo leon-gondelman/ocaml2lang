@@ -34,7 +34,7 @@ type expr =
   | Evalue of value
   | Etuple of expr list
   | Efun   of (ident list) * expr
-  | Erec   of ident * ident list * expr
+  | Erec   of ident * ident list * expr * expr
   | EFst   of expr
   | ESnd   of expr
   | Eapp   of expr * (expr list)
@@ -150,7 +150,10 @@ let rec pp_expr ?(paren=false) fmt = function
       (Format.pp_print_list ~pp_sep:pp_space pp_param) idl
       (pp_expr ~paren) e
   | Eapp (e1, el) -> pp_app ~paren fmt e1 el
-  | Erec _ -> assert false (* TODO *)
+  | Erec (fun_name, args, e1, e2) ->
+      fprintf fmt "letrec: \"%s\" %a :=@\n%a in@\n%a" fun_name
+        (Format.pp_print_list ~pp_sep:pp_space pp_param) args
+        (pp_expr ~paren) e1 (pp_expr ~paren) e2
   | Etuple l -> fprintf fmt "(@[<hov>%a@])"
       (Format.pp_print_list ~pp_sep:pp_comma pp_expr) l
   | EFst e ->
@@ -165,7 +168,7 @@ let rec pp_expr ?(paren=false) fmt = function
 
 and pp_pattern fmt = function
   | Ppat_any -> fprintf fmt "_"
-  | Ppat_var s -> fprintf fmt "%s" s
+  | Ppat_var s -> fprintf fmt "\"%s\"" s
   | Ppat_apply (v, None) -> fprintf fmt "%a" pp_var v
   | Ppat_apply (v, Some p) -> fprintf fmt "%a %a" pp_var v pp_pattern p
 

@@ -8,5 +8,6 @@ let ptree =
   Parser.implementation Lexer.token lb
 
 let () =
-  let aneris = Translate.structure ptree in
+  let info = Translate.create_info () in
+  let aneris = Translate.structure info ptree in
   Lang.pp_decls Format.std_formatter aneris
