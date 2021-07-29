@@ -1,5 +1,6 @@
 (library
   (name ocaml2lang)
   (libraries ocaml-compiler-libs.common)
+  (modules_without_implementation ast)
   (inline_tests)
   (preprocess (pps ppx_expect)))

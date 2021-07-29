@@ -178,7 +178,7 @@ and pp_case fmt {pc_lhs; pc_rhs} =
 and pp_app ?(paren=false) fmt e el =
   match (e, el) with
   | (Evar (Vgvar Gvar s), [e1;e2]) when s = "+" || s = "-" || s = "*" ->
-     fprintf fmt "(%a %s %a)" pp_expr_pr e1 s pp_expr_pr e2
+      fprintf fmt "(%a %s %a)" pp_expr_pr e1 s pp_expr_pr e2
   | (Evar (Vgvar v), el) ->
      begin
        try
