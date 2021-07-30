@@ -164,4 +164,9 @@ let pp_decl fmt (id, expr) =
     id (pp_expr ~paren:false) expr
 
 let pp_program fmt p =
-  fprintf fmt "@[%a@]" (pp_print_list ~pp_sep:pp_newline2 pp_decl) p
+  fprintf fmt "@[%a@]@." (pp_print_list ~pp_sep:pp_newline2 pp_decl) p
+
+let pp_builtin fmt = function
+  | BNone -> ()
+  | BBuiltin s -> fprintf fmt "Builtin (%s)" s
+  | BUnOp s -> fprintf fmt "BUnOp (%s)" s

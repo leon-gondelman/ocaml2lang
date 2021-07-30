@@ -45,13 +45,19 @@ type info = { (* auxiliary information needed for translation, such as
   info_lvars : (ident, unit) Hashtbl.t;
   info_gvars : (ident, unit) Hashtbl.t;
   info_bultin: bool;
+  info_known : (string, builtin) Hashtbl.t;
+  (* TODO: dependencies, in particular for [assert] *)
 }
 
 let create_info info_bultin = {
   info_lvars = Hashtbl.create 16;
   info_gvars = Hashtbl.create 16;
   info_bultin;
+  info_known = Hashtbl.create 16;
 }
+
+let add_known info id builtin =
+  Hashtbl.add info.info_known id builtin
 
 let mk_lamb binder expr =
   Rec (BAnon, binder, expr)
@@ -62,23 +68,60 @@ let rec name_of_pat pat = match pat.P.ppat_desc with
   | Ppat_constraint (p, _) -> name_of_pat p
   | _ -> assert false (* TODO *)
 
+let is_builtin info = info.info_bultin
+
+let mk_bultin env known =
+  mk_aneris_program env [] known
+
+let return_builtin info l =
+  if is_builtin info then l else []
+
+let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
+  let is_builtin P.{attr_name = {txt; _}; _} =
+    txt = "builtin" || txt = "UnOp" in
+  let get_string_payload payload = match payload with
+    | P.PStr
+        [{ pstr_desc =
+             Pstr_eval
+               ({ pexp_desc =
+                    Pexp_constant (Pconst_string (spec, _, _)); _ }, _);
+           _ };] -> spec
+    | _ -> assert false in
+  let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
+    | "builtin" -> BBuiltin (get_string_payload attr_payload)
+    | "UnOp"    -> BUnOp (get_string_payload attr_payload)
+    | _         -> BNone in
+  let builtin = try let attr = List.find is_builtin pvb_attributes in
+      get_builtin attr
+    with Not_found -> BNone in
+  let id = name_of_pat pvb_pat in
+  add_known info id builtin;
+  []
+
 let rec structure info str =
-  List.flatten (List.map (structure_item info) str)
+  let body = List.flatten (List.map (structure_item info) str) in
+  mk_aneris_program (mk_env ()) body info.info_known
 
 and structure_item info str_item =
   let add_info id = Hashtbl.add info.info_gvars id () in
   match str_item.P.pstr_desc with
   | Pstr_value (Nonrecursive, [val_bind]) ->
-      let id, expr = value_binding info val_bind in
-      add_info id;
-      [(id, expr)]
+      if is_builtin info then
+        value_binding_bultin info val_bind
+      else
+        let id, expr = value_binding info val_bind in
+        add_info id;
+        [(id, expr)]
   | Pstr_value (Recursive, [val_bind]) ->
-      let id, expr = value_binding info val_bind in
-      let arg, body = match expr with
-        | Rec (_, b, e) -> b, e
-        | _ -> assert false in
-      add_info id;
-      [(id, Rec (BNamed id, arg, body))]
+      if is_builtin info then
+        value_binding_bultin info val_bind
+      else
+        let id, expr = value_binding info val_bind in
+        let arg, body = match expr with
+          | Rec (_, b, e) -> b, e
+          | _ -> assert false in
+        add_info id;
+        [(id, Rec (BNamed id, arg, body))]
   | Pstr_type _ ->
       []
   | Pstr_open _ ->
@@ -245,6 +288,9 @@ and construct info = function
      Val (LitV (LitSocketType SOCK_DGRAM))
   | ({txt = Lident "IPPROTO_UDP"; _}, None) ->
      Val (LitV (LitProtocol IPPROTO_UDP))
+  | ({txt = Lident s; _}, _) ->
+      Format.eprintf "s:%s@." s;
+      assert false (* TODO *)
   | _ -> assert false (*TODO : socket address, socket handle? *)
 
 let program fname =
@@ -261,5 +307,5 @@ open Pp_aneris
 
 let%expect_test _ =
   pp_program Format.std_formatter
-    (structure (create_info false) (ptree_of_string "let f x = x"));
+    (structure (create_info false) (ptree_of_string "let f x = x")).prog_body;
   [%expect {| Definition f : base_lang.val := λ: "x", "x". |}]

@@ -14,5 +14,9 @@ let fname = Sys.argv.(1)
  *   Pp_aneris.pp_program Format.std_formatter aneris *)
 
 let () =
+  let open Pp_aneris in
   let p = program fname in
-  Pp_aneris.pp_program Format.std_formatter p
+  Pp_aneris.pp_program Format.std_formatter p.prog_body;
+  Format.eprintf "known:@.";
+  let pp_known k v = Format.eprintf "(%s, %a)@." k pp_builtin v in
+  Hashtbl.iter pp_known p.prog_known

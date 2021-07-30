@@ -87,7 +87,20 @@ type decl = string * expr
 
 type env
 
+val mk_env : unit -> env
+
+type builtin =
+  | BNone
+  | BBuiltin of string
+  | BUnOp    of string
+  (* TODO: to be completed *)
+
+type known_map = (string, builtin) Hashtbl.t
+
 type aneris_program = {
-  prog_env : env;
-  prog_body: decl list
+  prog_env  : env;
+  prog_body : decl list;
+  prog_known: known_map;
 }
+
+val mk_aneris_program : env -> decl list -> known_map -> aneris_program
