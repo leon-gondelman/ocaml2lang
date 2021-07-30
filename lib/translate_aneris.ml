@@ -3,17 +3,54 @@ open Longident
 
 module P = Parsetree
 
+module Read = struct
+
+  type structure = {
+    str_builtin: bool;
+    str_program: P.structure;
+  }
+
+  let mk_structure ?(str_builtin=false) str_program =
+    { str_builtin; str_program }
+
+  type builtin = string list
+
+  let builtin =
+    let cin = open_in "_builtin" in (* FIXME: check if _bultin is present *)
+    let l = ref [] in
+    try
+      while true do
+        let line = input_line cin in
+        l := line :: !l
+      done;
+      assert false
+    with End_of_file -> let acc = List.rev !l in
+      let h = Hashtbl.create 16 in
+      List.iter (fun s -> Hashtbl.add h s ()) acc;
+      h
+
+  let ptree fname =
+    let cin = open_in fname in
+    let lb = Lexing.from_channel cin in
+    let str_program = Parser.implementation Lexer.token lb in
+    let str_builtin = Hashtbl.mem builtin fname in
+    mk_structure ~str_builtin str_program
+
+end
+
 open Ast
 
 type info = { (* auxiliary information needed for translation, such as
                  free variables, local variables, paths, etc. *)
-  info_lvars: (ident, unit) Hashtbl.t;
-  info_gvars: (ident, unit) Hashtbl.t;
+  info_lvars : (ident, unit) Hashtbl.t;
+  info_gvars : (ident, unit) Hashtbl.t;
+  info_bultin: bool;
 }
 
-let create_info () = {
+let create_info info_bultin = {
   info_lvars = Hashtbl.create 16;
   info_gvars = Hashtbl.create 16;
+  info_bultin;
 }
 
 let mk_lamb binder expr =
@@ -204,6 +241,12 @@ and construct info = function
       begin match e with Val v -> Val (InjRV v) | _ -> InjR e end
   | _ -> assert false (*TODO*)
 
+let program fname =
+  let open Read in
+  let {str_builtin; str_program} = ptree fname in
+  let info = create_info str_builtin in
+  structure info str_program
+
 let ptree_of_string s =
   let lb = Lexing.from_string s in
   Parser.implementation Lexer.token lb
@@ -212,5 +255,5 @@ open Pp_aneris
 
 let%expect_test _ =
   pp_program Format.std_formatter
-    (structure (create_info ()) (ptree_of_string "let f x = x"));
+    (structure (create_info false) (ptree_of_string "let f x = x"));
   [%expect {| Definition f : base_lang.val := λ: "x", "x". |}]
