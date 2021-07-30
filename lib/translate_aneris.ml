@@ -232,6 +232,8 @@ and expression info expr =
      let expr1 = expression info e1 in
      let expr2 = expression info e2 in
      App (mk_lamb BAnon expr2, expr1)
+  | Pexp_open _ ->
+      assert false (* TODO *)
   | _ -> assert false (* TODO *)
 
 and pattern info P.{pc_lhs; pc_rhs; _} =
