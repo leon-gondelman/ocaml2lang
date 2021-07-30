@@ -52,69 +52,69 @@ let rec list_nth =
      | None -> None
 
 
-let rec list_mem x l =
-  match l with
-    Some a ->
-     let head = fst a in
-     let tail = snd a in
-     (x = head) || list_mem x tail
-  | None -> false
-
-let rec list_find_remove f l =
-  match l with
-    Some a ->
-     let head = fst a in
-     let tail = snd a in
-     if f head then Some (head, tail)
-     else
-       let r = list_find_remove f tail in
-       (match r with
-          Some b ->
-           let head' = fst b in
-           let tail' = snd b in
-           Some (head', list_cons head tail')
-        | None -> None)
-  | None -> None
-
-let rec list_sub i l =
-  if i <= 0 then None
-  else
-    match l with
-      Some a -> list_cons (fst a) (list_sub (i - 1) (snd a))
-    | None -> None
-
-let rec list_rev_aux l acc =
-    match l with
-      None -> acc
-    | Some p ->
-       let h = fst p in
-       let t = snd p in
-       let acc' = list_cons h acc in
-       list_rev_aux t acc'
-
-let list_rev =
-  fun l -> list_rev_aux l None
-
-let rec list_append l r =
-  match l with
-    None -> r
-  | Some p ->
-     let h = fst p in
-     let t = snd p in
-     list_cons h (list_append t r)
-
-
-let list_is_empty =
-  fun l ->
-  match l with
-    None -> true
-  | Some _ -> false
-
-
-let rec list_forall test l =
-  match l with
-    None -> true
-  | Some p ->
-     let h = fst p in
-     let t = snd p in
-     test h && list_forall test t
+(* let rec list_mem x l =
+ *   match l with
+ *     Some a ->
+ *      let head = fst a in
+ *      let tail = snd a in
+ *      (x = head) || list_mem x tail
+ *   | None -> false
+ *
+ * let rec list_find_remove f l =
+ *   match l with
+ *     Some a ->
+ *      let head = fst a in
+ *      let tail = snd a in
+ *      if f head then Some (head, tail)
+ *      else
+ *        let r = list_find_remove f tail in
+ *        (match r with
+ *           Some b ->
+ *            let head' = fst b in
+ *            let tail' = snd b in
+ *            Some (head', list_cons head tail')
+ *         | None -> None)
+ *   | None -> None
+ *
+ * let rec list_sub i l =
+ *   if i <= 0 then None
+ *   else
+ *     match l with
+ *       Some a -> list_cons (fst a) (list_sub (i - 1) (snd a))
+ *     | None -> None
+ *
+ * let rec list_rev_aux l acc =
+ *     match l with
+ *       None -> acc
+ *     | Some p ->
+ *        let h = fst p in
+ *        let t = snd p in
+ *        let acc' = list_cons h acc in
+ *        list_rev_aux t acc'
+ *
+ * let list_rev =
+ *   fun l -> list_rev_aux l None
+ *
+ * let rec list_append l r =
+ *   match l with
+ *     None -> r
+ *   | Some p ->
+ *      let h = fst p in
+ *      let t = snd p in
+ *      list_cons h (list_append t r)
+ *
+ *
+ * let list_is_empty =
+ *   fun l ->
+ *   match l with
+ *     None -> true
+ *   | Some _ -> false
+ *
+ *
+ * let rec list_forall test l =
+ *   match l with
+ *     None -> true
+ *   | Some p ->
+ *      let h = fst p in
+ *      let t = snd p in
+ *      test h && list_forall test t *)

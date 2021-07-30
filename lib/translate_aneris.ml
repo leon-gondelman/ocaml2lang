@@ -310,7 +310,7 @@ and construct info = function
       assert false (* TODO *)
   | _ -> assert false (*TODO : socket address, socket handle? *)
 
-let program fname =
+and program fname =
   let open Read in
   let {str_builtin; str_program} = ptree fname in
   let info = create_info str_builtin in

@@ -107,10 +107,11 @@ and pp_expr ?(paren=false) fmt = function
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
   | BinOp  _ -> assert false (* TODO *)
   | If (e1, e2, e3) ->
-     fprintf fmt "if: %a then@\n@@[<hov>%a@]@\nelse@[<hov>%a@]@\n"
+      fprintf fmt (protect_on paren
+                     "if: %a@\n@[<hov 2>then@ %a@]@\nelse @[<hov>%a@]")
        (pp_expr ~paren) e1
-       (pp_expr ~paren:true) e2
-       (pp_expr ~paren:true) e3
+       (pp_expr ~paren) e2
+       (pp_expr ~paren) e3
   | FindFrom  _ -> assert false (* TODO *)
   | Substring  _ -> assert false (* TODO *)
   | Pair _ as p -> let tuple = list_of_pair p in
