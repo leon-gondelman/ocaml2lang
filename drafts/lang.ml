@@ -7,9 +7,12 @@ open Network
 
 (* type ('a, 'b) sumTy = InjL of 'a | InjR of 'b *)
 
-let[@builtin] makeAddress ip port = ADDR_INET (inet_addr_of_string ip, port)
+let[@builtin "MakeAddress"] makeAddress ip port =
+  ADDR_INET (inet_addr_of_string ip, port)
 
-let[@builtin] udp_socket () = socket PF_INET SOCK_DGRAM 0
+let[@builtin "NewSocket"] socket = socket
+
+(* let[@builtin] udp_socket () = socket PF_INET SOCK_DGRAM 0 *)
 
 let[@builtin] receiveFrom skt =
   let buffer = Bytes.create 65536 in
@@ -57,13 +60,13 @@ let[@builtin] substring e0 e1 e2 =
   with Invalid_argument _ -> ""
 
 (* (UnOp StringLength e) *)
-let[@construct: UnOp StringLength e] strlen e = String.length e
+let[@UnOp "StringLength"] strlen = String.length
 
 (* (UnOp StringOfInt e) *)
-let[@construct: UnOp StringOfInt e] stringOfInt e = string_of_int e
+let[@UnOp "StringOfInt"] stringOfInt = string_of_int
 
 (* Translate to UnOp IntOfString e *)
-let[@construct: UnOp IntOfString e] intOfString e = int_of_string_opt e
+let[@UnOp "IntOfString"] intOfString = int_of_string_opt
 
 (* Notations: *)
 (* Notation i2s e := (UnOp StringOfInt e)%E (only parsing). *)
