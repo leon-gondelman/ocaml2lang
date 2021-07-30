@@ -143,6 +143,8 @@ and pp_expr ?(paren=false) fmt = function
       fprintf fmt "NONE"
   | ESome e ->
       fprintf fmt (protect_on paren "SOME %a") (pp_expr ~paren:true) e
+  | Eassert e ->
+      fprintf fmt (protect_on paren "assert: %a") (pp_expr ~paren:true) e
 
 and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
   | BAnon, BNamed x ->

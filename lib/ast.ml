@@ -69,6 +69,7 @@ type expr =
   | Start of base_lit * expr
   | ESome of expr
   | ENone
+  | Eassert of expr
 
 and branch = string * expr
 

@@ -146,7 +146,7 @@ and longident info = function
   | Lident s ->
       if Hashtbl.mem info.info_lvars s then Vlvar s
       else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
-      else failwith "Unautorized global symbol"
+      else failwith ("Unautorized global symbol: " ^ s)
   | Ldot (t, s) ->
       (* TODO: open external modules *)
       let v = longident info t in
@@ -232,6 +232,8 @@ and expression info expr =
      let expr1 = expression info e1 in
      let expr2 = expression info e2 in
      App (mk_lamb BAnon expr2, expr1)
+  | Pexp_assert e ->
+      Eassert (expression info e)
   | Pexp_open _ ->
       assert false (* TODO *)
   | _ -> assert false (* TODO *)
