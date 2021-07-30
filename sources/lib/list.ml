@@ -47,8 +47,8 @@ let rec list_nth =
   fun l i ->
      match l with
        Some a ->
-       if i = 0 then Some (fst a)
-       else list_nth (snd a) (i - 1)
+       if true then Some (fst a)
+       else list_nth (snd a) (i + 1)
      | None -> None
 
 

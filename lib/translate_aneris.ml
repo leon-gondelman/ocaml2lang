@@ -43,7 +43,7 @@ open Ast
 type info = { (* auxiliary information needed for translation, such as
                  free variables, local variables, paths, etc. *)
   info_lvars : (ident, unit) Hashtbl.t;
-  info_gvars : (ident, unit) Hashtbl.t;
+  info_gvars : (ident, builtin) Hashtbl.t;
   info_bultin: bool;
   info_known : (string, builtin) Hashtbl.t;
   (* TODO: dependencies, in particular for [assert] *)
@@ -99,19 +99,27 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   with Not_found -> () end;
   []
 
+(* To be completed with all possible builtin translation *)
+let node_from_builtin s args = match s, args with
+  | "SendTo", [expr1; expr2; expr3] ->
+      SendTo (expr1, expr2, expr3)
+  | _ -> assert false (* TODO *)
+
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
   mk_aneris_program (mk_env ()) body info.info_known
 
 and structure_item info str_item =
-  let add_info id = Hashtbl.add info.info_gvars id () in
+  let add_info id b = Hashtbl.add info.info_gvars id b in
+  let add_known id b = Hashtbl.add info.info_known id b in
   match str_item.P.pstr_desc with
   | Pstr_value (Nonrecursive, [val_bind]) ->
       if is_builtin info then
         value_binding_bultin info val_bind
       else
         let id, expr = value_binding info val_bind in
-        add_info id;
+        add_info id BNone;
+        add_known id BNone;
         [(id, expr)]
   | Pstr_value (Recursive, [val_bind]) ->
       if is_builtin info then
@@ -121,11 +129,21 @@ and structure_item info str_item =
         let arg, body = match expr with
           | Rec (_, b, e) -> b, e
           | _ -> assert false in
-        add_info id;
+        add_info id BNone;
+        add_known id BNone;
         [(id, Rec (BNamed id, arg, body))]
   | Pstr_type _ ->
       []
-  | Pstr_open _ ->
+  | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
+      if not (is_builtin info) then begin
+        let fname = string_of_longident m.txt in
+        let fname = (String.uncapitalize_ascii fname) ^ ".ml" in
+        let {prog_known; _} = program fname in
+        (* add all known symbols to the gvars tables *)
+        let add_info id b = add_info id b in
+        Hashtbl.iter add_info prog_known end;
+      (* else ...
+              what should we do about [open] inside builtins? *)
       []
   | Pstr_exception _ ->
       if is_builtin info then []
@@ -140,6 +158,11 @@ and value_binding info {pvb_pat; pvb_expr; _} =
   let expr = expression info pvb_expr in
   remove_info id;
   id, expr
+
+and string_of_longident = function
+  | Lapply _ -> assert false (* TODO *)
+  | Lident s -> s
+  | Ldot (id, s) -> (string_of_longident id) ^ "_" ^ s
 
 and longident info = function
   | Lapply _ -> assert false (* TODO *)
@@ -208,6 +231,19 @@ and expression info expr =
   (* let add_local_args args = List.iter add_info args in *)
   let remove_info id = Hashtbl.remove info.info_lvars id in
   (* let remove_local_args args = List.iter remove_info args in *)
+  let mk_app e1 args =
+    let find_builtin id = Hashtbl.find info.info_gvars id in
+    let mk_app acc e = App (acc, e) in
+    let expr1 = expression info e1 in
+    let (_, args) = List.split args in
+    let exprl = List.map (expression info) args in
+    match expr1 with
+    | Var (Vgvar (Gvar id)) ->
+        begin match find_builtin id with (* this should not raise Not_found *)
+        | BNone -> List.fold_left mk_app expr1 exprl
+        | BBuiltin s -> node_from_builtin s exprl
+        | BUnOp _ -> assert false (* TODO *) end
+    | _ -> List.fold_left mk_app expr1 exprl in
   match expr.P.pexp_desc with
   | Pexp_constant c -> Val (LitV (constant c))
   | Pexp_construct (c,o) -> construct info (c,o)
@@ -279,11 +315,7 @@ and expression info expr =
       let expr1 = expression info expr1 in
       UnOp (NegOp, expr1)
   | Pexp_apply (e1, el) ->
-      let mk_app acc e = App (acc, e) in
-      let expr1 = expression info e1 in
-      let (_, args) = List.split el in
-      let exprl = List.map (expression info) args in
-      List.fold_left mk_app expr1 exprl
+      mk_app e1 el
   | Pexp_tuple (x :: xs) ->
       let mk_tuple acc e = Pair (acc, e) in (* check for values *)
       let fst = expression info x in
