@@ -10,7 +10,12 @@ open Network
 let[@builtin "MakeAddress"] makeAddress ip port =
   ADDR_INET (inet_addr_of_string ip, port)
 
-let[@builtin "NewSocket"] socket = socket
+type protocol = IPROTO_UDP
+let num_of_protocol = function
+  | IPROTO_UDP -> 0
+
+let[@builtin "NewSocket"] socket x y z = socket x y (num_of_protocol z)
+
 
 (* let[@builtin] udp_socket () = socket PF_INET SOCK_DGRAM 0 *)
 
