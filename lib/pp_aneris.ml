@@ -79,7 +79,7 @@ let rec pp_rec fmt paren f binder e =
   | BAnon -> fprintf fmt (protect_on paren "λ: @[%a@],@ %a")
       (pp_print_list ~pp_sep:pp_space pp_binder) args
       (pp_expr ~paren:false) body
-  | BNamed x -> fprintf fmt (protect_on paren "rec: \"%s\" @[%a@],@ %a") x
+  | BNamed x -> fprintf fmt (protect_on paren "rec: \"%s\" @[%a@] :=@ %a") x
      (pp_print_list ~pp_sep:pp_space pp_binder) args
      (pp_expr ~paren:false) body
 
@@ -101,11 +101,37 @@ and pp_expr ?(paren=false) fmt = function
         pp_binder x (pp_expr ~paren) e1 (pp_expr ~paren) e2
   | App _ as a -> let app = list_of_app a in
       pp_app paren fmt app
-  | UnOp  _ -> assert false (* TODO *)
-  | BinOp (PlusOp, e1, e2) ->
-      fprintf fmt (protect_on paren "%a + %a")
-        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
-  | BinOp  _ -> assert false (* TODO *)
+  | UnOp  (op, e1) ->
+     let pp_unop op =
+       fprintf fmt (protect_on paren "%s %a")
+        op (pp_expr ~paren:true) e1 in
+     let op = match op with
+       | NegOp        -> "~"
+       | MinusUnOp    -> "-"
+       | StringOfInt  -> "i2s"
+       | IntOfString  -> "s2i"
+       | StringLength -> "strlen" in
+     pp_unop op
+  | BinOp (op, e1, e2) ->
+     let pp_binop op =
+      fprintf fmt (protect_on paren "%a %s %a")
+        (pp_expr ~paren:true) e1 op (pp_expr ~paren:true) e2 in
+     let op = match op with
+       | PlusOp    -> "+"
+       | MinusOp   -> "-"
+       | MultOp    -> "*"
+       | QuotOp    -> "`quot`"
+       | RemOp     -> "`rem`"
+       | AndOp     -> "&&"
+       | OrOp      -> "||"
+       | XorOp     -> assert false
+       | ShiftLOp  -> assert false
+       | ShiftROp  -> assert false
+       | LeOp      -> "≤"
+       | LtOp      -> "<"
+       | EqOp      -> "="
+       | StringApp -> "^^" in
+     pp_binop op
   | If (e1, e2, e3) ->
       fprintf fmt (protect_on paren
                      "if: %a@\n@[<hov 2>then@ %a@]@\nelse @[<hov>%a@]")

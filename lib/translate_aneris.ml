@@ -164,6 +164,46 @@ and expression info expr =
   let is_plus P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "+"; _} -> true
     | _ -> false in
+  let is_minus P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "-"; _} -> true
+    | _ -> false in
+  let is_mult P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "*"; _} -> true
+    | _ -> false in
+  let is_quot P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "/"; _} -> true
+    | _ -> false in
+  let is_mod P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "mod"; _} -> true
+    | _ -> false in
+
+  let is_and P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "&&"; _} -> true
+    | _ -> false in
+  let is_or P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "||"; _} -> true
+    | _ -> false in
+  let is_xor P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "<>"; _} -> true
+    | _ -> false in
+  let is_equal P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "="; _} -> true
+    | _ -> false in
+  let is_leq P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "<="; _} -> true
+    | _ -> false in
+  let is_lt P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "<"; _} -> true
+    | _ -> false in
+  let is_string_app P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "^"; _} -> true
+    | _ -> false in
+  let is_uminus P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "~-"; _} -> true
+    | _ -> false in
+  let is_not P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "not"; _} -> true
+    | _ -> false in
   let add_info id = Hashtbl.add info.info_lvars id () in
   (* let add_local_args args = List.iter add_info args in *)
   let remove_info id = Hashtbl.remove info.info_lvars id in
@@ -188,6 +228,56 @@ and expression info expr =
       let expr1 = expression info expr1 in
       let expr2 = expression info expr2 in
       BinOp (PlusOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_minus f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (MinusOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_mult f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (MultOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_quot f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (QuotOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_mod f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (RemOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_and f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (AndOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_or f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (OrOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_xor f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (XorOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_equal f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (EqOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_leq f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (LeOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_lt f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (LtOp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_string_app f ->
+      let expr1 = expression info expr1 in
+      let expr2 = expression info expr2 in
+      BinOp (StringApp, expr1, expr2)
+  | Pexp_apply (f, [(_, expr1)]) when is_uminus f ->
+      let expr1 = expression info expr1 in
+      UnOp (MinusUnOp, expr1)
+  | Pexp_apply (f, [(_, expr1)]) when is_not f ->
+      let expr1 = expression info expr1 in
+      UnOp (NegOp, expr1)
   | Pexp_apply (e1, el) ->
       let mk_app acc e = App (acc, e) in
       let expr1 = expression info e1 in
