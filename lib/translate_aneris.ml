@@ -214,13 +214,17 @@ and expression info expr =
       let expr2 = expression info e2 in
       remove_info id;
       App (mk_lamb (BNamed id) expr2, expr)
-  | Pexp_let (Recursive, [{pvb_pat; pvb_expr; _}], e2) ->
+  | Pexp_let (Recursive, [{pvb_pat; _} as val_bind], e2) ->
       let fun_name = name_of_pat pvb_pat in
       add_info fun_name;
       let id, expr = value_binding info val_bind in
       let expr2 = expression info e2 in
       remove_info fun_name;
-      App (Rec (fun_name, args, expr2), expr)
+      App (Rec (BNamed fun_name, BNamed id, expr2), expr)
+  | Pexp_sequence (e1, e2) ->
+     let expr1 = expression info e1 in
+     let expr2 = expression info e2 in
+     App (mk_lamb BAnon expr2, expr1)
   | _ -> assert false (* TODO *)
 
 and pattern info P.{pc_lhs; pc_rhs; _} =
