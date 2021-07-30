@@ -207,7 +207,14 @@ and expression info expr =
   | Pexp_match _ ->
       assert false (* TODO *)
   | Pexp_constraint (e, _) ->
-      expression info e
+     expression info e
+  | Pexp_ifthenelse (e1, e2, Some e3) ->
+     let expr1 = expression info e1 in
+     let expr2 = expression info e2 in
+     let expr3 = expression info e3 in
+     If (expr1, expr2, expr3)
+  | Pexp_ifthenelse (_, _, None) ->
+     assert false
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
       let id, expr = value_binding info val_bind in
       add_info id;
