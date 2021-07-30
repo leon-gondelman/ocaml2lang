@@ -91,11 +91,12 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
     | "builtin" -> BBuiltin (get_string_payload attr_payload)
     | "UnOp"    -> BUnOp (get_string_payload attr_payload)
     | _         -> BNone in
-  let builtin = try let attr = List.find is_builtin pvb_attributes in
-      get_builtin attr
-    with Not_found -> BNone in
-  let id = name_of_pat pvb_pat in
-  add_known info id builtin;
+  begin try
+    let attr = List.find is_builtin pvb_attributes in
+    let builtin = get_builtin attr in
+    let id = name_of_pat pvb_pat in
+    add_known info id builtin;
+  with Not_found -> () end;
   []
 
 let rec structure info str =
@@ -126,6 +127,9 @@ and structure_item info str_item =
       []
   | Pstr_open _ ->
       []
+  | Pstr_exception _ ->
+      if is_builtin info then []
+      else failwith "Exceptions not supported"
   | _ -> assert false (* TODO *)
 
 and value_binding info {pvb_pat; pvb_expr; _} =

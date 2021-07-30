@@ -57,6 +57,7 @@ let pp_litv fmt = function
   | LitBool false -> fprintf fmt "#false"
   | LitUnit -> fprintf fmt "#()"
   | LitString s -> fprintf fmt "#\"%s\"" s
+  | _ -> assert false (* TODO *)
 
 let rec pp_val ?(paren=false) fmt = function
   | LitV bl -> fprintf fmt "%a" pp_litv bl

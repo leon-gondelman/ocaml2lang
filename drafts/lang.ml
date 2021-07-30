@@ -19,7 +19,7 @@ let[@builtin "NewSocket"] socket x y z = socket x y (num_of_protocol z)
 
 (* let[@builtin] udp_socket () = socket PF_INET SOCK_DGRAM 0 *)
 
-let[@builtin] receiveFrom skt =
+let[@builtin "ReceiveFrom"] receiveFrom skt =
   let buffer = Bytes.create 65536 in
   try
     match recvfrom skt buffer 0 65536 [] with
@@ -32,11 +32,11 @@ let[@builtin] receiveFrom skt =
   | Unix_error (EWOULDBLOCK, _, _) -> None
 
 (* translate only name *)
-let[@builtin] sendTo skt msg sa =
+let[@builtin "SendTo"] sendTo skt msg sa =
   sendto skt (Bytes.of_string msg) 0 (String.length msg) [] (of_saddr sa)
 
 (* translate only name *)
-let[@builtin] socketBind socket addr = bind socket (of_saddr addr)
+let[@builtin "SocketBind"] socketBind socket addr = bind socket (of_saddr addr)
 
 exception OnlyPosTimeout
 
@@ -49,18 +49,18 @@ let makeDecimal n =
   in aux f
 
 (* translate only name *)
-let[@builtin] setReceiveTimeout sh n m =
+let[@builtin "SetReceiveTimeout"] setReceiveTimeout sh n m =
   let fn = float_of_int n in
   let fm = makeDecimal m in
   Unix.setsockopt_float sh SO_RCVTIMEO (fn +. fm)
 
-let[@builtin] fork e =
+let[@builtin "Fork"] fork e =
   let _ = Thread.create (fun () -> e) () in ()
 
-let[@builtin] findFrom e0 e1 e2 =
+let[@builtin "FindFrom"] findFrom e0 e1 e2 =
   String.index_from_opt e0 e1 e2
 
-let[@builtin] substring e0 e1 e2 =
+let[@builtin "Substring"] substring e0 e1 e2 =
   try String.sub e0 e1 e2
   with Invalid_argument _ -> ""
 
