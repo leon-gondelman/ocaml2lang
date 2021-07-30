@@ -79,7 +79,7 @@ let return_builtin info l =
 let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   let is_builtin P.{attr_name = {txt; _}; _} =
     txt = "builtin" || txt = "UnOp" in
-  let get_string_payload payload = match payload with
+  let get_payload payload = match payload with
     | P.PStr
         [{ pstr_desc =
              Pstr_eval
@@ -88,8 +88,8 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
            _ };] -> spec
     | _ -> assert false in
   let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
-    | "builtin" -> BBuiltin (get_string_payload attr_payload)
-    | "UnOp"    -> BUnOp (get_string_payload attr_payload)
+    | "builtin" -> BBuiltin (get_payload attr_payload)
+    | "UnOp"    -> BUnOp (get_payload attr_payload)
     | _         -> BNone in
   begin try
     let attr = List.find is_builtin pvb_attributes in
