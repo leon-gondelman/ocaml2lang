@@ -118,3 +118,22 @@ let rec list_forall test l =
      let h = fst p in
      let t = snd p in
      test h && list_forall test t
+
+(* TODO: remove me after fixing pp *)
+let f e1 e2 = e1; (e1; e2; e2)
+
+(* TODO: remove me after fixing pp *)
+let g e1 =
+  let a =
+    let x = e1 (42, 12, 23232232) in x
+  in a
+
+(* TODO: remove me after fixing pp *)
+let h e1 e2 e3 =
+  if
+    true
+  then
+    e1
+  else
+    e2;
+  e3

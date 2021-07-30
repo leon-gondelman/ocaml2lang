@@ -96,8 +96,11 @@ and pp_expr ?(paren=false) fmt = function
   | Rec (f, x, e) -> pp_rec fmt paren f x e
   | App (App _, _) as a -> let app = list_of_app a in
       pp_app paren fmt app
+  | App (Rec (BAnon, BAnon, e2), e1) ->
+      fprintf fmt (protect_on paren "@[<hov>%a ;;@ %a@]")
+        (pp_expr ~paren) e1 (pp_expr ~paren) e2
   | App (Rec (BAnon, x, e2), e1) ->
-      fprintf fmt "@[<v>let: %a := %a in@ %a@]"
+      fprintf fmt (protect_on paren "@[<v>let: %a := %a in@ %a@]")
         pp_binder x (pp_expr ~paren) e1 (pp_expr ~paren) e2
   | App _ as a -> let app = list_of_app a in
       pp_app paren fmt app
@@ -134,7 +137,7 @@ and pp_expr ?(paren=false) fmt = function
      pp_binop op
   | If (e1, e2, e3) ->
       fprintf fmt (protect_on paren
-                     "if: %a@\n@[<hov 2>then@ %a@]@\nelse @[<hov>%a@]")
+                     "(if: %a@\n@[<hov 2>then@ %a@]@\nelse @[<hov>%a@])")
        (pp_expr ~paren) e1
        (pp_expr ~paren) e2
        (pp_expr ~paren) e3
