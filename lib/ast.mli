@@ -1,5 +1,13 @@
 type ident = string
 
+type address_family = PF_INET
+
+  (* Supported socket types. *)
+type socket_type = SOCK_DGRAM
+
+  (* Supported protocols. *)
+type protocol = IPPROTO_UDP
+
 type binder =
   | BAnon
   | BNamed of string
@@ -19,6 +27,9 @@ type base_lit =
   | LitInt    of int
   | LitBool   of bool
   | LitString of string
+  | LitAddressFamily of address_family
+  | LitSocketType of socket_type
+  | LitProtocol of protocol
 
 type un_op =
   | NegOp | MinusUnOp | StringOfInt | IntOfString | StringLength

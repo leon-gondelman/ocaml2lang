@@ -239,7 +239,13 @@ and construct info = function
   | ({txt = Lident "InjR"; _}, Some expr) ->
       let e = expression info expr in
       begin match e with Val v -> Val (InjRV v) | _ -> InjR e end
-  | _ -> assert false (*TODO*)
+  | ({txt = Lident "PF_INET"; _}, None) ->
+     Val (LitV (LitAddressFamily PF_INET))
+  | ({txt = Lident "SOCK_DGRAM"; _}, None) ->
+     Val (LitV (LitSocketType SOCK_DGRAM))
+  | ({txt = Lident "IPPROTO_UDP"; _}, None) ->
+     Val (LitV (LitProtocol IPPROTO_UDP))
+  | _ -> assert false (*TODO : socket address, socket handle? *)
 
 let program fname =
   let open Read in
