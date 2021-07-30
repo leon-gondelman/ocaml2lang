@@ -72,9 +72,11 @@ and value =
   | SomeV of value
   | NoneV
 
-(* module type Str : Set.S with elt = string *)
+type decl = string * expr
+
+type env
 
 type aneris_program = {
-  prog_env : string list;
-  prog_body: (string * expr) list
+  prog_env : env;
+  prog_body: decl list
 }
