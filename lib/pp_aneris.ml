@@ -165,7 +165,10 @@ and pp_expr ?(paren=false) fmt = function
   | MakeAddress  _ -> assert false (* TODO *)
   | NewSocket  _ -> assert false (* TODO *)
   | SocketBind  _ -> assert false (* TODO *)
-  | SendTo  _ -> assert false (* TODO *)
+  | SendTo (e1, e2, e3) ->
+      fprintf fmt "SendTo %a %a %a)"
+        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+        (pp_expr ~paren:true) e3
   | ReceiveFrom  _ -> assert false (* TODO *)
   | SetReceiveTimeout  _ -> assert false (* TODO *)
   | Start  _ -> assert false (* TODO *)
