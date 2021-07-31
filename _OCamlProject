@@ -3,13 +3,13 @@ OUTPUT_ROOT:
 
 IMPORT_PATH_PREFIX:
 
-	theories aneris_examples
-	vendor/aneris/theories aneris
+	ml_sources aneris_examples
+	vendor/aneris/ml_sources aneris
 
 ML_SOURCES:
 
-ml_sources/ping_pong/code.ml
-ml_sources/crdt/gcounter/code.ml
+        ml_sources/ping_pong/code.ml
+        ml_sources/crdt/gcounter/code.ml
 
 
 ML_DEPENDENCIES:

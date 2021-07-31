@@ -1,0 +1,26 @@
+OUTPUT_ROOT:
+	ml_sources theories
+
+IMPORT_PATH_PREFIX:
+
+	ml_sources aneris_examples
+	vendor/aneris/ml_sources aneris
+
+ML_SOURCES:
+
+        ping_pong/code.ml
+        crdt/gcounter/code.ml
+
+
+ML_DEPENDENCIES:
+
+vendor/aneris/ml_sources/aneris_lang/network.ml
+vendor/aneris/ml_sources/aneris_lang/lang.ml
+vendor/aneris/ml_sources/aneris_lang/notation.ml
+vendor/aneris/ml_sources/aneris_lang/lib/assert.ml
+vendor/aneris/ml_sources/aneris_lang/lib/network_util.ml
+vendor/aneris/ml_sources/aneris_lang/lib/serialization/serialization_base.ml
+vendor/aneris/ml_sources/aneris_lang/lib/serialization/serialization.ml
+vendor/aneris/ml_sources/aneris_lang/lib/list.ml
+vendor/aneris/ml_sources/aneris_lang/lib/set.ml
+vendor/aneris/ml_sources/aneris_lang/lib/lock.ml

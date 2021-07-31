@@ -1,8 +1,8 @@
 (ocamllex
- (modules pps ulexer))
+ (modules mllexer))
 
 (menhir
- (modules uparser))
+ (modules mlparser))
 
 (library
   (name ocaml2lang)
