@@ -34,8 +34,10 @@ let rec retrieve_args args = function
   | Rec (BAnon, b, e) ->
       let args, expr = retrieve_args args e in
       b :: args, expr
-  | Rec (BNamed _, _, _) ->
-      assert false (* TODO? *)
+  | Rec (BNamed _, _b, _e) as expr ->
+     [], expr
+     (* let args, expr = retrieve_args args e in
+      * b :: args, expr *)
   | e ->
       args, e
 
@@ -102,6 +104,14 @@ and pp_expr ?(paren=false) fmt = function
   | App (Rec (BAnon, x, e2), e1) ->
       fprintf fmt (protect_on paren "@[<v>let: %a := %a in@ %a@]")
         pp_binder x (pp_expr ~paren) e1 (pp_expr ~paren) e2
+  | App (Rec (BNamed f, x, e2), e1) ->
+     let retrieve = retrieve_args [] in
+     let args, body = retrieve e2 in
+     let args = x :: args in
+     fprintf fmt
+       (protect_on paren "@[<v>letrec: \"%s\" @[%a@] := %a in@ %a@]") f
+       (pp_print_list ~pp_sep:pp_space pp_binder) args
+       (pp_expr ~paren) body (pp_expr ~paren) e1
   | App _ as a -> let app = list_of_app a in
       pp_app paren fmt app
   | UnOp  (op, e1) ->

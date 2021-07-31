@@ -355,10 +355,19 @@ and expression info expr =
   | Pexp_let (Recursive, [{pvb_pat; _} as val_bind], e2) ->
       let fun_name = name_of_pat pvb_pat in
       add_info fun_name;
-      let id, expr = value_binding info val_bind in
+      let _id, expr = value_binding info val_bind in
       let expr2 = expression info e2 in
       remove_info fun_name;
-      App (Rec (BNamed fun_name, BNamed id, expr2), expr)
+      begin
+        let arg, body = match expr with
+          | Rec (_, b, e) -> b, e
+          | _ -> assert false in
+        match expr2 with
+        | Var (Vlvar v) when v = fun_name ->
+           Rec (BNamed fun_name, arg, body)
+        | _ ->
+           App (Rec (BNamed fun_name, arg, body), expr2)
+      end
   | Pexp_sequence (e1, e2) ->
      let expr1 = expression info e1 in
      let expr2 = expression info e2 in
