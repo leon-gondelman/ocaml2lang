@@ -24,6 +24,17 @@ ocaml2lang/sources/aneris_examples/vendor/aneris/
 
 ```
 
+## Generation
+
+```
+# rules:
+  a file is generated only if it is belongs ML_sources of _OCamlProject and is not in _built
+  a file can use global vars only from files that are _OCamlProject: 
+    - it's own gvars
+    - gvars from other ML_sources (including _builtin files)
+    - gvars from files in paths from ML_DEPENDENCIES of _OCamlProject
+```
+
 ## TODOS
 
 ```
