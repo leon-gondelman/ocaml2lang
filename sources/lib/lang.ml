@@ -72,3 +72,5 @@ let[@UnOp "IntOfString"] intOfString = int_of_string_opt
 (* Notation i2s e := (UnOp StringOfInt e)%E (only parsing). *)
 (* Notation s2i e := (UnOp IntOfString e)%E (only parsing). *)
 (* Notation strlen e := (UnOp StringLength e)%E (only parsing). *)
+
+let [@builtin "RefLbl"] ref_lbl s e = ref e

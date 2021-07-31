@@ -124,6 +124,8 @@ let node_from_builtin s args = match s, args with
      FindFrom (expr1, expr2, expr3)
   | "Fork", [expr] ->
      Fork expr
+  | "RefLbl", [Var (Vlvar expr1); expr2] ->
+     Alloc ((Some expr1), expr2)
   | _ -> assert false (* TODO *)
 
 let node_from_unop s args = match s, args with
@@ -262,6 +264,12 @@ and expression info expr =
   let is_not P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "not"; _} -> true
     | _ -> false in
+  let is_ref P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "ref"; _} -> true
+    | _ -> false in
+  let is_assign P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident ":="; _} -> true
+    | _ -> false in
   let add_info id = Hashtbl.add info.info_lvars id () in
   (* let add_local_args args = List.iter add_info args in *)
   let remove_info id = Hashtbl.remove info.info_lvars id in
@@ -294,10 +302,16 @@ and expression info expr =
   | Pexp_apply (f, [(_, e)]) when is_fst f ->
       Fst (expression info e)
   | Pexp_apply (f, [(_, e)]) when is_snd f ->
-      Snd (expression info e)
-  | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_plus f ->
-      let expr1 = expression info expr1 in
-      let expr2 = expression info expr2 in
+     Snd (expression info e)
+  | Pexp_apply (f, [(_, e)]) when is_ref f ->
+     Alloc (None, (expression info e))
+  | Pexp_apply (f, [(_, e1); (_, e2)]) when is_assign f ->
+      let expr1 = expression info e1 in
+      let expr2 = expression info e2 in
+      Store (expr1, expr2)
+  | Pexp_apply (f, [(_, e1); (_, e2)]) when is_plus f ->
+      let expr1 = expression info e1 in
+      let expr2 = expression info e2 in
       BinOp (PlusOp, expr1, expr2)
   | Pexp_apply (f, [(_, expr1); (_, expr2)]) when is_minus f ->
       let expr1 = expression info expr1 in

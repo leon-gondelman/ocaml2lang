@@ -175,9 +175,15 @@ and pp_expr ?(paren=false) fmt = function
   | Case _ -> assert false (* TODO for pairs ? *)
   | Fork e ->
      fprintf fmt "Fork %a" (pp_expr ~paren:true) e
-  | Alloc  _ -> assert false (* TODO *)
-  | Load  _ -> assert false (* TODO *)
-  | Store  _ -> assert false (* TODO *)
+  | Alloc (None, e) ->
+     fprintf fmt "ref %a" (pp_expr ~paren:true) e
+  | Alloc (Some lbl, e) ->
+     fprintf fmt "ref<<%s>> %a" lbl (pp_expr ~paren:true) e
+  | Load e ->
+     fprintf fmt "! %a" (pp_expr ~paren:true) e
+  | Store (e1, e2) ->
+      fprintf fmt (protect_on paren "%a <- %a")
+        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
   | MakeAddress  (e1, e2) ->
      fprintf fmt "MakeAddress %a %a"
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
