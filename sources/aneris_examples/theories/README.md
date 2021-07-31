@@ -1,0 +1,1 @@
+theories folder must exist before generation of coq files from ocaml sources
