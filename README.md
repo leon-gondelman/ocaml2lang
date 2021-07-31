@@ -40,6 +40,11 @@ ocaml2lang/sources/aneris_examples/vendor/aneris/
 - generate backup files *.v if *.v already exists
 - write a doc describing technical solution
 
+# generation process:
+  - generate backup files *.v if *.v already exists
+  - generate folder only if do not exist
+  - think about how to handle dependencies with same name but different paths
+
 
 # toolchain compilation:
   Include into Makefile a command to run the generation of coq files from ml sources, e.g.
