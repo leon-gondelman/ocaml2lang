@@ -19,34 +19,30 @@ let pp_deps fmt dep =
 
 let pp_newline fmt () = fprintf fmt "@\n"
 
-let pp_program fname env decls =
+open Ast
+
+let pp_program fname prog =
   let fout_name = (String.uncapitalize_ascii fname) ^ ".v" in
   let cout = open_out fout_name in
   let fout = formatter_of_out_channel cout in
+  let decls = prog.prog_body in
+  let env = prog.prog_env in
   fprintf fout "@[%a@]@\n@[%a@]"
     (Ast.pp_env ~pp_sep:pp_newline ~pp_elts:pp_deps) env
     Pp_aneris.pp_program decls;
   close_out cout
 
-let queue_files = Queue.create ()
+let opt_queue = Queue.create ()
 
-let pp_queue (s, decls, env) =
-  pp_program s env decls
-
-open Ast
+let pp_queue (s, prog) =
+  pp_program s prog
 
 let () =
   let p = program fname in
-  let env = p.prog_env in
   let fname = Filename.chop_extension fname in
-  (* let cout = open_out fout_name in
-   * let fout = formatter_of_out_channel cout in
-   * let env = p.prog_env in *)
-  Queue.add (fname, p.prog_body, env) queue_files;
-  let add_decls s decls = Queue.add (s, decls, env) queue_files in
+  let not_builtin prog = not prog.prog_builtin in
+  let add_decls s prog =
+    if not_builtin prog then Queue.add (s, prog) opt_queue in
+  Queue.add (fname, p) opt_queue;
   iter_env add_decls p.prog_env;
-  Queue.iter pp_queue queue_files
-  (* fprintf fout "@[%a@]@\n@[%a@]"
-   *   (Ast.pp_env ~pp_sep:pp_newline ~pp_elts:pp_deps) env
-   *   Pp_aneris.pp_program p.prog_body;
-   * close_out cout *)
+  Queue.iter pp_queue opt_queue

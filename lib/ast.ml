@@ -84,33 +84,6 @@ and value =
 
 type decl = string * expr
 
-(* module SDecl = struct
- *   type t = decl
- *
- *   let compare (s1, _) (s2, _) = Stdlib.compare s1 s2
- * end
- *
- * module type E = Set.S with type elt = decl
- *
- * module Env : E = Set.Make (SDecl) *)
-
-type env = (string, decl list) Hashtbl.t
-
-let mk_env () = Hashtbl.create 16
-
-let add_env env id decls =
-  Hashtbl.add env id decls
-
-let iter_env f env =
-  Hashtbl.iter f env
-
-open Format
-
-type 'a pp = formatter -> 'a -> unit
-
-let pp_env ~pp_sep ~pp_elts fmt env =
-  Hashtbl.iter (fun k _ -> fprintf fmt "%a" pp_elts k; pp_sep fmt ()) env
-
 type builtin =
   | BNone
   | BBuiltin of string
@@ -120,10 +93,28 @@ type builtin =
 type known_map = (string, builtin) Hashtbl.t
 
 type aneris_program = {
-  prog_env  : env;
-  prog_body : decl list;
-  prog_known: known_map
+  prog_env    : env;
+  prog_body   : decl list;
+  prog_known  : known_map;
+  prog_builtin: bool;
 }
 
-let mk_aneris_program prog_env prog_body prog_known =
-  { prog_env; prog_body; prog_known }
+and env = (string, aneris_program) Hashtbl.t
+
+let mk_env () = Hashtbl.create 16
+
+let add_env env id progr =
+  Hashtbl.add env id progr
+
+let iter_env f (env: env) =
+  Hashtbl.iter f env
+
+open Format
+
+type 'a pp = formatter -> 'a -> unit
+
+let pp_env ~pp_sep ~pp_elts fmt env =
+  Hashtbl.iter (fun k _ -> fprintf fmt "%a" pp_elts k; pp_sep fmt ()) env
+
+let mk_aneris_program prog_env prog_body prog_known prog_builtin =
+  { prog_env; prog_body; prog_known; prog_builtin }

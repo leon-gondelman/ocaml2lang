@@ -137,7 +137,7 @@ let node_from_unop s args = match s, args with
 
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
-  mk_aneris_program info.info_env body info.info_known
+  mk_aneris_program info.info_env body info.info_known info.info_bultin
 
 and structure_item info str_item =
   let add_info id b = Hashtbl.add info.info_gvars id b in
@@ -168,14 +168,14 @@ and structure_item info str_item =
       let fname = string_of_longident m.txt in
       if not (is_builtin info) then begin
         let fname_ml = (String.uncapitalize_ascii fname) ^ ".ml" in
-        let {prog_known; prog_body; _} = program fname_ml in
+        let ({prog_known; _} as p) = program fname_ml in
         (* add all known symbols to the gvars tables *)
         let add_info id b = add_info id b in
         Hashtbl.iter add_info prog_known;
-        let add_decl acc d = d :: acc in
-        let decls = List.fold_left add_decl [] prog_body in
-        let decls = List.rev decls in
-        add_env info.info_env fname decls
+        (* let add_decl acc d = d :: acc in
+         * let decls = List.fold_left add_decl [] prog_body in
+         * let decls = List.rev decls in *)
+        add_env info.info_env fname p
       end;
       (* else ...
               what should we do about [open] inside builtins? *)
