@@ -147,7 +147,7 @@ and structure_item info str_item =
         (* add all known symbols to the gvars tables *)
         let add_info id b = add_info id b in
         Hashtbl.iter add_info prog_known;
-        let add_decl acc d = Env.add d acc in
+        let add_decl acc d = d :: acc in
         let decls = List.fold_left add_decl Env.empty prog_body in
         add_env info.info_env fname decls
       end;

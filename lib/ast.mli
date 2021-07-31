@@ -90,13 +90,9 @@ type env
 
 val mk_env : unit -> env
 
-module type E = Set.S with type elt = decl
+val iter_env : (string -> decl list -> unit) -> env -> unit
 
-module Env : E
-
-val iter_env : (string -> Env.t -> unit) -> env -> unit
-
-val add_env : env -> string -> Env.t -> unit
+val add_env : env -> string -> decl list -> unit
 
 type 'a pp = Format.formatter -> 'a -> unit
 

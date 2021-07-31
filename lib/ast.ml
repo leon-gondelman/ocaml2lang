@@ -84,17 +84,17 @@ and value =
 
 type decl = string * expr
 
-module SDecl = struct
-  type t = decl
+(* module SDecl = struct
+ *   type t = decl
+ *
+ *   let compare (s1, _) (s2, _) = Stdlib.compare s1 s2
+ * end
+ *
+ * module type E = Set.S with type elt = decl
+ *
+ * module Env : E = Set.Make (SDecl) *)
 
-  let compare (s1, _) (s2, _) = Stdlib.compare s1 s2
-end
-
-module type E = Set.S with type elt = decl
-
-module Env : E = Set.Make (SDecl)
-
-type env = (string, Env.t) Hashtbl.t
+type env = (string, decl list) Hashtbl.t
 
 let mk_env () = Hashtbl.create 16
 
