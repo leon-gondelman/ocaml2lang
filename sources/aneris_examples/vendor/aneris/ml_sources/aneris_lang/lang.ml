@@ -5,7 +5,7 @@
 open Unix
 open Network
 
-(* type ('a, 'b) sumTy = InjL of 'a | InjR of 'b *)
+type ('a, 'b) sumTy = InjL of 'a | InjR of 'b
 
 let[@builtin "MakeAddress"] makeAddress ip port =
   ADDR_INET (inet_addr_of_string ip, port)
@@ -68,9 +68,10 @@ let[@UnOp "StringOfInt"] stringOfInt = string_of_int
 (* Translate to UnOp IntOfString e *)
 let[@UnOp "IntOfString"] intOfString = int_of_string_opt
 
-(* Notations: *)
-(* Notation i2s e := (UnOp StringOfInt e)%E (only parsing). *)
-(* Notation s2i e := (UnOp IntOfString e)%E (only parsing). *)
-(* Notation strlen e := (UnOp StringLength e)%E (only parsing). *)
+(* Translate to UnOp StringOfInt e *)
+let[@builtin "i2s"] i2s = string_of_int
+
+(* Translate to UnOp IntOfString e *)
+let[@builtin "s2i"] s2i = int_of_string_opt
 
 let [@builtin "RefLbl"] ref_lbl s e = ref e

@@ -127,7 +127,11 @@ let node_from_builtin s args = match s, args with
   | "RefLbl", [Var (Vlvar expr1); expr2] ->
       Alloc ((Some expr1), expr2)
   | "RefLbl", [Val (LitV LitString s); expr2] ->
-      Alloc ((Some s), expr2)
+     Alloc ((Some s), expr2)
+  | "s2i", [expr] ->
+     UnOp (IntOfString, expr)
+  | "i2s", [expr] ->
+     UnOp (StringOfInt, expr)
   | _ -> assert false (* TODO *)
 
 let node_from_unop s args = match s, args with

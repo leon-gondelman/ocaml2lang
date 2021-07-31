@@ -7,13 +7,15 @@ IMPORT_PATH_PREFIX:
 
 ML_SOURCES:
 
-ml_examples/aneris_lang/network.ml
-ml_examples/aneris_lang/lang.ml
-ml_examples/aneris_lang/notation.ml
-ml_examples/aneris_lang/lib/assert.ml
-ml_examples/aneris_lang/lib/network_util.ml
-ml_examples/aneris_lang/lib/list.ml
-ml_examples/aneris_lang/lib/set.ml
-ml_examples/aneris_lang/lib/lock.ml
+	aneris_lang/network.ml
+	aneris_lang/lang.ml
+	aneris_lang/notation.ml
+	aneris_lang/lib/assert.ml
+	aneris_lang/lib/network_util.ml
+	aneris_lang/lib/list.ml
+	aneris_lang/lib/set.ml
+	aneris_lang/lib/lock.ml
+	aneris_lang/lib/serialization/serialization_base.ml
+	aneris_lang/lib/serialization/serialization.ml
 
 ML_DEPENDENCIES:
