@@ -106,13 +106,33 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
 
 (* To be completed with all possible builtin translation *)
 let node_from_builtin s args = match s, args with
+  | "MakeAddress", [expr1; expr2] ->
+     MakeAddress (expr1, expr2)
+  | "NewSocket", [expr1; expr2; expr3] ->
+     NewSocket (expr1, expr2, expr3)
+  | "SocketBind", [expr1; expr2] ->
+     SocketBind (expr1, expr2)
   | "SendTo", [expr1; expr2; expr3] ->
-      SendTo (expr1, expr2, expr3)
+     SendTo (expr1, expr2, expr3)
+  | "ReceiveFrom", [expr] ->
+     ReceiveFrom expr
+  | "SetReceiveTimeout", [expr1; expr2; expr3] ->
+     SetReceiveTimeout (expr1, expr2, expr3)
+  | "SubString", [expr1; expr2; expr3] ->
+     Substring (expr1, expr2, expr3)
+  | "FindFrom", [expr1; expr2; expr3] ->
+     FindFrom (expr1, expr2, expr3)
+  | "Fork", [expr] ->
+     Fork expr
   | _ -> assert false (* TODO *)
 
 let node_from_unop s args = match s, args with
   | "StringLength", [expr] ->
-      UnOp (StringLength, expr)
+     UnOp (StringLength, expr)
+  | "StringOfInt", [expr] ->
+     UnOp (StringOfInt, expr)
+  | "IntOfString", [expr] ->
+     UnOp (IntOfString, expr)
   | _ -> assert false (* TODO *)
 
 let rec structure info str =

@@ -114,7 +114,7 @@ and pp_expr ?(paren=false) fmt = function
        (pp_expr ~paren) body (pp_expr ~paren) e1
   | App _ as a -> let app = list_of_app a in
       pp_app paren fmt app
-  | UnOp  (op, e1) ->
+  | UnOp (op, e1) ->
      let pp_unop op =
        fprintf fmt (protect_on paren "%s %a")
         op (pp_expr ~paren:true) e1 in
@@ -151,8 +151,14 @@ and pp_expr ?(paren=false) fmt = function
        (pp_expr ~paren) e1
        (pp_expr ~paren) e2
        (pp_expr ~paren) e3
-  | FindFrom  _ -> assert false (* TODO *)
-  | Substring  _ -> assert false (* TODO *)
+  | FindFrom (e1, e2, e3) ->
+     fprintf fmt "FindFrom %a %a %a"
+       (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+       (pp_expr ~paren:true) e3
+  | Substring (e1, e2, e3) ->
+     fprintf fmt "Substring %a %a %a"
+       (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+       (pp_expr ~paren:true) e3
   | Pair _ as p -> let tuple = list_of_pair p in
       fprintf fmt "(@[<hov>%a@])"
         (pp_print_list ~pp_sep:pp_comma (pp_expr ~paren)) tuple
@@ -166,28 +172,41 @@ and pp_expr ?(paren=false) fmt = function
   | Case (e1, (c2, Rec (BAnon, b2, e2)), (c3, Rec (BAnon, b3, e3))) ->
       fprintf fmt "match: %a with@\n@[<hov>%a@]@\nend"
         (pp_expr ~paren) e1 (pp_case c2 b2 e2 c3 b3) e3
-  | Case _ -> assert false (* TODO *)
-  | Fork  _ -> assert false (* TODO *)
+  | Case _ -> assert false (* TODO for pairs ? *)
+  | Fork e ->
+     fprintf fmt "Fork %a" (pp_expr ~paren:true) e
   | Alloc  _ -> assert false (* TODO *)
   | Load  _ -> assert false (* TODO *)
   | Store  _ -> assert false (* TODO *)
-  | CAS  _ -> assert false (* TODO *)
-  | MakeAddress  _ -> assert false (* TODO *)
-  | NewSocket  _ -> assert false (* TODO *)
-  | SocketBind  _ -> assert false (* TODO *)
+  | MakeAddress  (e1, e2) ->
+     fprintf fmt "MakeAddress %a %a"
+       (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+  | NewSocket  (e1, e2, e3) ->
+      fprintf fmt "NewSocket %a %a %a"
+        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+        (pp_expr ~paren:true) e3
+  | SocketBind (e1, e2) ->
+     fprintf fmt "SocketBind %a %a"
+       (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
   | SendTo (e1, e2, e3) ->
       fprintf fmt "SendTo %a %a %a"
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
         (pp_expr ~paren:true) e3
-  | ReceiveFrom  _ -> assert false (* TODO *)
-  | SetReceiveTimeout  _ -> assert false (* TODO *)
-  | Start  _ -> assert false (* TODO *)
+  | ReceiveFrom e1 ->
+     fprintf fmt "ReceiveFrom %a"
+       (pp_expr ~paren:true) e1
+  | SetReceiveTimeout (e1, e2, e3) ->
+     fprintf fmt "SendToSetReceiveTimeout %a %a %a"
+        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+        (pp_expr ~paren:true) e3
   | ENone ->
-      fprintf fmt "NONE"
+      fprintf fmt "NONEV"
   | ESome e ->
       fprintf fmt (protect_on paren "SOME %a") (pp_expr ~paren:true) e
   | Eassert e ->
       fprintf fmt (protect_on paren "assert: %a") (pp_expr ~paren:true) e
+  | CAS  _ -> assert false (* TODO *)
+  | Start  _ -> assert false (* TODO *)
 
 and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
   | BAnon, BNamed x ->
