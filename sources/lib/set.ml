@@ -1,14 +1,15 @@
 open List
+open Notation
 
 type 'a aset = 'a alist
 
 let set_empty : unit -> 'a aset =
-  fun () -> NONE
+  fun () -> None
 
 let set_add : 'a -> 'a aset -> 'a aset =
   fun x s ->
   if list_mem x s then s
-  else SOME (x, s)
+  else Some (x, s)
 
 let set_mem : 'a -> 'a aset -> bool = list_mem
 

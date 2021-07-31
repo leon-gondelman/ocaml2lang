@@ -90,11 +90,26 @@ module SDecl = struct
   let compare (s1, _) (s2, _) = Stdlib.compare s1 s2
 end
 
-module Env = Set.Make (SDecl)
+module type E = Set.S with type elt = decl
+
+module Env : E = Set.Make (SDecl)
 
 type env = (string, Env.t) Hashtbl.t
 
 let mk_env () = Hashtbl.create 16
+
+let add_env env id decls =
+  Hashtbl.add env id decls
+
+let iter_env f env =
+  Hashtbl.iter f env
+
+open Format
+
+type 'a pp = formatter -> 'a -> unit
+
+let pp_env ~pp_sep ~pp_elts fmt env =
+  Hashtbl.iter (fun k _ -> fprintf fmt "%a" pp_elts k; pp_sep fmt ()) env
 
 type builtin =
   | BNone

@@ -90,6 +90,19 @@ type env
 
 val mk_env : unit -> env
 
+module type E = Set.S with type elt = decl
+
+module Env : E
+
+val iter_env : (string -> Env.t -> unit) -> env -> unit
+
+val add_env : env -> string -> Env.t -> unit
+
+type 'a pp = Format.formatter -> 'a -> unit
+
+val pp_env :
+  pp_sep:(unit pp) -> pp_elts:(string pp) -> Format.formatter -> env -> unit
+
 type builtin =
   | BNone
   | BBuiltin of string

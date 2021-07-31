@@ -46,6 +46,8 @@ type info = { (* auxiliary information needed for translation, such as
   info_gvars : (ident, builtin) Hashtbl.t;
   info_bultin: bool;
   info_known : (string, builtin) Hashtbl.t;
+  info_deps  : (string, unit) Hashtbl.t;
+  info_env   : env;
   (* TODO: dependencies, in particular for [assert] *)
 }
 
@@ -54,6 +56,8 @@ let create_info info_bultin = {
   info_gvars = Hashtbl.create 16;
   info_bultin;
   info_known = Hashtbl.create 16;
+  info_deps  = Hashtbl.create 16;
+  info_env   = mk_env ();
 }
 
 let add_known info id builtin =
@@ -63,9 +67,10 @@ let mk_lamb binder expr =
   Rec (BAnon, binder, expr)
 
 let rec name_of_pat pat = match pat.P.ppat_desc with
-  | Ppat_any -> "_"
+  | Ppat_any -> assert false
   | Ppat_var s -> s.txt
   | Ppat_constraint (p, _) -> name_of_pat p
+  | Ppat_construct ({txt = Lident "()"; _}, _) -> "<>"
   | _ -> assert false (* TODO *)
 
 let is_builtin info = info.info_bultin
@@ -107,7 +112,7 @@ let node_from_builtin s args = match s, args with
 
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
-  mk_aneris_program (mk_env ()) body info.info_known
+  mk_aneris_program info.info_env body info.info_known
 
 and structure_item info str_item =
   let add_info id b = Hashtbl.add info.info_gvars id b in
@@ -135,15 +140,20 @@ and structure_item info str_item =
   | Pstr_type _ ->
       []
   | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
+      let fname = string_of_longident m.txt in
       if not (is_builtin info) then begin
-        let fname = string_of_longident m.txt in
-        let fname = (String.uncapitalize_ascii fname) ^ ".ml" in
-        let {prog_known; _} = program fname in
+        let fname_ml = (String.uncapitalize_ascii fname) ^ ".ml" in
+        let {prog_known; prog_body; _} = program fname_ml in
         (* add all known symbols to the gvars tables *)
         let add_info id b = add_info id b in
-        Hashtbl.iter add_info prog_known end;
+        Hashtbl.iter add_info prog_known;
+        let add_decl acc d = Env.add d acc in
+        let decls = List.fold_left add_decl Env.empty prog_body in
+        add_env info.info_env fname decls
+      end;
       (* else ...
               what should we do about [open] inside builtins? *)
+      Hashtbl.add info.info_deps fname ();
       []
   | Pstr_exception _ ->
       if is_builtin info then []
@@ -199,7 +209,6 @@ and expression info expr =
   let is_mod P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "mod"; _} -> true
     | _ -> false in
-
   let is_and P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "&&"; _} -> true
     | _ -> false in
