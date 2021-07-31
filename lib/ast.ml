@@ -70,6 +70,10 @@ type expr =
   | ESome of expr
   | ENone
   | Eassert of expr
+  | ENewLock of expr
+  | ETryAcquire of expr
+  | EAcquire of expr
+  | ERelease of expr
 
 and branch = string * expr
 
@@ -92,6 +96,8 @@ type builtin =
 
 type known_map = (string, builtin) Hashtbl.t
 
+type path = string
+
 type aneris_program = {
   prog_env    : env;
   prog_body   : decl list;
@@ -99,12 +105,12 @@ type aneris_program = {
   prog_builtin: bool;
 }
 
-and env = (string * aneris_program) list
+and env = (string * path * aneris_program) list
 
 let mk_env () = []
 
-let add_env env id progr =
-  (id, progr) :: env
+let add_env env id path progr =
+  (id, path, progr) :: env
 
 let iter_env f (env: env) =
   List.iter f env
@@ -113,8 +119,8 @@ open Format
 
 type 'a pp = formatter -> 'a -> unit
 
-let pp_env ~pp_sep ~pp_elts fmt (env: env) =
-  List.iter (fun (k, _) -> fprintf fmt "%a" pp_elts k; pp_sep fmt ()) env
+(* let pp_env ~pp_sep ~pp_elts fmt (env: env) =
+ *   List.iter (fun (k, _) -> fprintf fmt "%a" pp_elts k; pp_sep fmt ()) env *)
 
 let mk_aneris_program prog_env prog_body prog_known prog_builtin =
   { prog_env; prog_body; prog_known; prog_builtin }

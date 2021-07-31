@@ -1,0 +1,18 @@
+OUTPUT_ROOT:
+	ml_sources theories
+
+IMPORT_PATH_PREFIX:
+
+	ml_sources aneris_examples
+	vendor/aneris/ml_sources aneris
+
+ML_SOURCES:
+	util/util.ml
+	ping_pong/code.ml
+	crdt/gcounter/code.ml
+
+ML_DEPENDENCIES:
+        aneris_examples/ml_sources/util
+        aneris_examples/ml_sources/ping_pong
+        aneris_examples/ml_sources/crdt/gcounter
+	vendor/aneris/ml_sources/aneris_lang/

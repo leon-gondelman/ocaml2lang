@@ -46,6 +46,7 @@ type info = { (* auxiliary information needed for translation, such as
   info_gvars   : (ident, builtin) Hashtbl.t;
   info_builtin : bool;
   info_known   : (string, builtin) Hashtbl.t;
+  info_nmspace : (string, unit) Hashtbl.t;
   mutable info_deps : string list;
   mutable info_env  : env;
   (* TODO: dependencies, in particular for [assert] *)
@@ -56,6 +57,7 @@ let create_info info_builtin = {
   info_gvars = Hashtbl.create 16;
   info_builtin;
   info_known = Hashtbl.create 16;
+  info_nmspace = Hashtbl.create 16;
   info_deps  = [];
   info_env   = mk_env ();
 }
@@ -127,11 +129,19 @@ let node_from_builtin s args = match s, args with
   | "RefLbl", [Var (Vlvar expr1); expr2] ->
       Alloc ((Some expr1), expr2)
   | "RefLbl", [Val (LitV LitString s); expr2] ->
-     Alloc ((Some s), expr2)
+      Alloc ((Some s), expr2)
   | "s2i", [expr] ->
-     UnOp (IntOfString, expr)
+      UnOp (IntOfString, expr)
   | "i2s", [expr] ->
-     UnOp (StringOfInt, expr)
+      UnOp (StringOfInt, expr)
+  | "NewLock", [expr] ->
+      ENewLock expr
+  | "TryAcquire", [expr] ->
+      ETryAcquire expr
+  | "Acquire", [expr] ->
+      EAcquire expr
+  | "Release", [expr] ->
+      ERelease expr
   | _ -> assert false (* TODO *)
 
 let node_from_unop s args = match s, args with
@@ -142,6 +152,15 @@ let node_from_unop s args = match s, args with
   | "IntOfString", [expr] ->
      UnOp (IntOfString, expr)
   | _ -> assert false (* TODO *)
+
+let find_file_deps info f =
+  let exception Found of string * string in
+  try
+    let check_file k () = let fname = Filename.concat k f in
+      if Sys.file_exists fname then raise (Found (f, k)) in
+    Hashtbl.iter check_file info.info_nmspace;
+    failwith ("Dependency not found: " ^ f)
+  with Found (s, path) -> s, path
 
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
@@ -176,12 +195,16 @@ and structure_item info str_item =
   | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
       let fname = string_of_longident m.txt in
       if not (is_builtin info) then begin
+        let nms = info.info_nmspace in
         let fname_ml = (String.uncapitalize_ascii fname) ^ ".ml" in
-        let ({prog_known; _} as p) = program fname_ml in
+        let fname_ml, path = find_file_deps info fname_ml in
+        let fname_ml = Filename.concat path fname_ml in
+        let ({prog_known; _} as p) = program nms fname_ml in
         (* add all known symbols to the gvars tables *)
         let add_info id b = add_info id b in
         Hashtbl.iter add_info prog_known;
-        info.info_env <- add_env info.info_env fname p
+        let fname = String.uncapitalize_ascii fname in
+        info.info_env <- add_env info.info_env fname path p
       end;
       (* else ...
               what should we do about [open] inside builtins? *)
@@ -494,10 +517,11 @@ and construct info = function
       assert false (* TODO *)
   | _ -> assert false (*TODO : socket address, socket handle? *)
 
-and program fname =
+and program nms fname =
   let open Read in
   let {str_builtin; str_program} = ptree fname in
   let info = create_info str_builtin in
+  Hashtbl.iter (fun k () -> Hashtbl.add info.info_nmspace k ()) nms;
   structure info str_program
 
 let ptree_of_string s =

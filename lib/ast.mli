@@ -72,6 +72,10 @@ type expr =
   | ESome of expr
   | ENone
   | Eassert of expr
+  | ENewLock of expr
+  | ETryAcquire of expr
+  | EAcquire of expr
+  | ERelease of expr
 
 and branch = string * expr
 
@@ -94,6 +98,8 @@ type builtin =
 
 type known_map = (string, builtin) Hashtbl.t
 
+type path = string
+
 type aneris_program = {
   prog_env    : env;
   prog_body   : decl list;
@@ -101,18 +107,18 @@ type aneris_program = {
   prog_builtin: bool;
 }
 
-and env = (string * aneris_program) list
+and env = (string * string * aneris_program) list
 
 val mk_env : unit -> env
 
-val iter_env : ((string * aneris_program) -> unit) -> env -> unit
+val iter_env : ((string * string * aneris_program) -> unit) -> env -> unit
 
-val add_env : env -> string -> aneris_program -> env
+val add_env : env -> string -> string -> aneris_program -> env
 
 type 'a pp = Format.formatter -> 'a -> unit
 
-val pp_env : pp_sep:(unit pp) -> pp_elts:(string pp) ->
-  Format.formatter -> env -> unit
+(* val pp_env : pp_sep:(unit pp) -> pp_elts:(string pp) ->
+ *   Format.formatter -> env -> unit *)
 
 val mk_aneris_program :
   env -> decl list -> known_map -> bool -> aneris_program

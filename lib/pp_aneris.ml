@@ -212,6 +212,14 @@ and pp_expr ?(paren=false) fmt = function
       fprintf fmt (protect_on paren "SOME %a") (pp_expr ~paren:true) e
   | Eassert e ->
       fprintf fmt (protect_on paren "assert: %a") (pp_expr ~paren:true) e
+  | ENewLock e ->
+      fprintf fmt (protect_on paren "newlock %a") (pp_expr ~paren:true) e
+  | ETryAcquire e ->
+      fprintf fmt (protect_on paren "try_acquire %a") (pp_expr ~paren:true) e
+  | EAcquire e ->
+      fprintf fmt (protect_on paren "acquire %a") (pp_expr ~paren:true) e
+  | ERelease e ->
+      fprintf fmt (protect_on paren "release %a") (pp_expr ~paren:true) e
   | CAS  _ -> assert false (* TODO *)
   | Start  _ -> assert false (* TODO *)
 

@@ -15,7 +15,9 @@ ML_SOURCES:
 	aneris_lang/lib/list.ml
 	aneris_lang/lib/set.ml
 	aneris_lang/lib/lock.ml
-	aneris_lang/lib/serialization/serialization_base.ml
-	aneris_lang/lib/serialization/serialization.ml
 
 ML_DEPENDENCIES:
+
+        aneris_lang
+	aneris_lang/lib
+        aneris_lang/lib/serialization
