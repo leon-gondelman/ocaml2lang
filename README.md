@@ -13,3 +13,30 @@ dune runtest --auto-promote
 # (useful if the editor automatically updates the file while editing)
 dune runtest -w --auto-promote
 ```
+
+
+## Main test folder
+
+```
+# main test folder are:
+ocaml2lang/sources/aneris_examples/
+ocaml2lang/sources/aneris_examples/vendor/aneris/
+
+```
+
+## TODOS
+
+```
+- code generation with dependencies-
+- serialization:
+  + record definitions,
+  + record values
+  + formal params as local gvars
+- fix Network as module
+- notation for lists
+- parallel composition
+- indentation (protect expressions)
+- toolchain command from sources to make of Coq
+- generate backup files *.v if *.v already exists
+- write a doc describing technical solution
+```
