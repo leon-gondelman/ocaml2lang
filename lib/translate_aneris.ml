@@ -42,19 +42,19 @@ open Ast
 
 type info = { (* auxiliary information needed for translation, such as
                  free variables, local variables, paths, etc. *)
-          info_lvars : (ident, unit) Hashtbl.t;
-          info_gvars : (ident, builtin) Hashtbl.t;
-          info_bultin: bool;
-          info_known : (string, builtin) Hashtbl.t;
-  mutable info_deps  : string list;
-  mutable info_env   : env;
+  info_lvars   : (ident, unit) Hashtbl.t;
+  info_gvars   : (ident, builtin) Hashtbl.t;
+  info_builtin : bool;
+  info_known   : (string, builtin) Hashtbl.t;
+  mutable info_deps : string list;
+  mutable info_env  : env;
   (* TODO: dependencies, in particular for [assert] *)
 }
 
-let create_info info_bultin = {
+let create_info info_builtin = {
   info_lvars = Hashtbl.create 16;
   info_gvars = Hashtbl.create 16;
-  info_bultin;
+  info_builtin;
   info_known = Hashtbl.create 16;
   info_deps  = [];
   info_env   = mk_env ();
@@ -73,7 +73,7 @@ let rec name_of_pat pat = match pat.P.ppat_desc with
   | Ppat_construct ({txt = Lident "()"; _}, _) -> "<>"
   | _ -> assert false (* TODO *)
 
-let is_builtin info = info.info_bultin
+let is_builtin info = info.info_builtin
 
 let mk_bultin env known =
   mk_aneris_program env [] known
@@ -107,25 +107,27 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
 (* To be completed with all possible builtin translation *)
 let node_from_builtin s args = match s, args with
   | "MakeAddress", [expr1; expr2] ->
-     MakeAddress (expr1, expr2)
+      MakeAddress (expr1, expr2)
   | "NewSocket", [expr1; expr2; expr3] ->
-     NewSocket (expr1, expr2, expr3)
+      NewSocket (expr1, expr2, expr3)
   | "SocketBind", [expr1; expr2] ->
-     SocketBind (expr1, expr2)
+      SocketBind (expr1, expr2)
   | "SendTo", [expr1; expr2; expr3] ->
-     SendTo (expr1, expr2, expr3)
+      SendTo (expr1, expr2, expr3)
   | "ReceiveFrom", [expr] ->
-     ReceiveFrom expr
+      ReceiveFrom expr
   | "SetReceiveTimeout", [expr1; expr2; expr3] ->
-     SetReceiveTimeout (expr1, expr2, expr3)
+      SetReceiveTimeout (expr1, expr2, expr3)
   | "SubString", [expr1; expr2; expr3] ->
-     Substring (expr1, expr2, expr3)
+      Substring (expr1, expr2, expr3)
   | "FindFrom", [expr1; expr2; expr3] ->
-     FindFrom (expr1, expr2, expr3)
+      FindFrom (expr1, expr2, expr3)
   | "Fork", [expr] ->
-     Fork expr
+      Fork expr
   | "RefLbl", [Var (Vlvar expr1); expr2] ->
-     Alloc ((Some expr1), expr2)
+      Alloc ((Some expr1), expr2)
+  | "RefLbl", [Val (LitV LitString s); expr2] ->
+      Alloc ((Some s), expr2)
   | _ -> assert false (* TODO *)
 
 let node_from_unop s args = match s, args with
@@ -140,7 +142,7 @@ let node_from_unop s args = match s, args with
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
   let env = List.rev info.info_env in
-  mk_aneris_program env body info.info_known info.info_bultin
+  mk_aneris_program env body info.info_known info.info_builtin
 
 and structure_item info str_item =
   let add_info id b = Hashtbl.add info.info_gvars id b in

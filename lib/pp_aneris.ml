@@ -166,7 +166,8 @@ and pp_expr ?(paren=false) fmt = function
       fprintf fmt (protect_on paren "Fst %a") (pp_expr ~paren:true) e
   | Snd  e ->
       fprintf fmt (protect_on paren "Snd %a") (pp_expr ~paren:true) e
-  | InjL  _ -> assert false (* TODO *)
+  | InjL e ->
+      fprintf fmt (protect_on paren "InjL %a") (pp_expr ~paren:true) e
   | InjR e ->
       fprintf fmt (protect_on paren "InjR %a") (pp_expr ~paren:true) e
   | Case (e1, (c2, Rec (BAnon, b2, e2)), (c3, Rec (BAnon, b3, e3))) ->
@@ -176,7 +177,7 @@ and pp_expr ?(paren=false) fmt = function
   | Fork e ->
      fprintf fmt "Fork %a" (pp_expr ~paren:true) e
   | Alloc (None, e) ->
-     fprintf fmt "ref %a" (pp_expr ~paren:true) e
+      fprintf fmt (protect_on paren "ref %a") (pp_expr ~paren:true) e
   | Alloc (Some lbl, e) ->
      fprintf fmt "ref<<%s>> %a" lbl (pp_expr ~paren:true) e
   | Load e ->
