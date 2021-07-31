@@ -1,5 +1,6 @@
 open Ocaml2lang
 open Translate_aneris
+open Format
 
 let fname = Sys.argv.(1)
 
@@ -14,22 +15,38 @@ let fname = Sys.argv.(1)
  *   Pp_aneris.pp_program Format.std_formatter aneris *)
 
 let pp_deps fmt dep =
-  Format.fprintf fmt "From ... Require Import %s." dep
+  fprintf fmt "From ... Require Import %s." dep
 
-let pp_newline fmt () = Format.fprintf fmt "@\n"
+let pp_newline fmt () = fprintf fmt "@\n"
 
-open Format
+let pp_program fname env decls =
+  let fout_name = (String.uncapitalize_ascii fname) ^ ".v" in
+  let cout = open_out fout_name in
+  let fout = formatter_of_out_channel cout in
+  fprintf fout "@[%a@]@\n@[%a@]"
+    (Ast.pp_env ~pp_sep:pp_newline ~pp_elts:pp_deps) env
+    Pp_aneris.pp_program decls;
+  close_out cout
+
+let queue_files = Queue.create ()
+
+let pp_queue (s, decls, env) =
+  pp_program s env decls
+
+open Ast
 
 let () =
   let p = program fname in
-  let fout_name = (Filename.chop_extension fname) ^ ".v" in
-  let cout = open_out fout_name in
-  let fout = Format.formatter_of_out_channel cout in
   let env = p.prog_env in
-  (* Ast.iter_env (fun k _ -> fprintf fout "%s@." k) p.prog_env; *)
-  (* Format.fprintf fout "@[%a@]@\n%a"
-   *   (Format.pp_print_list ~pp_sep:pp_newline pp_deps) p.prog_env *)
-  fprintf fout "@[%a@]@\n@[%a@]"
-    (Ast.pp_env ~pp_sep:pp_newline ~pp_elts:pp_deps) env
-    Pp_aneris.pp_program p.prog_body;
-  close_out cout
+  let fname = Filename.chop_extension fname in
+  (* let cout = open_out fout_name in
+   * let fout = formatter_of_out_channel cout in
+   * let env = p.prog_env in *)
+  Queue.add (fname, p.prog_body, env) queue_files;
+  let add_decls s decls = Queue.add (s, decls, env) queue_files in
+  iter_env add_decls p.prog_env;
+  Queue.iter pp_queue queue_files
+  (* fprintf fout "@[%a@]@\n@[%a@]"
+   *   (Ast.pp_env ~pp_sep:pp_newline ~pp_elts:pp_deps) env
+   *   Pp_aneris.pp_program p.prog_body;
+   * close_out cout *)

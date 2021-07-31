@@ -13,7 +13,7 @@ let set_add : 'a -> 'a aset -> 'a aset =
 
 let set_mem : 'a -> 'a aset -> bool = list_mem
 
-let set_iter : ('a -> unit) -> 'a aset -> unit= list_iter
+let set_iter : ('a -> unit) -> 'a aset -> unit = list_iter
 
 let set_foldl : ('a -> 'b -> 'a) -> 'a -> 'b aset -> 'a = list_fold
 

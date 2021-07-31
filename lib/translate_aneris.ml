@@ -110,6 +110,11 @@ let node_from_builtin s args = match s, args with
       SendTo (expr1, expr2, expr3)
   | _ -> assert false (* TODO *)
 
+let node_from_unop s args = match s, args with
+  | "StringLength", [expr] ->
+      UnOp (StringLength, expr)
+  | _ -> assert false (* TODO *)
+
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
   mk_aneris_program info.info_env body info.info_known
@@ -148,7 +153,8 @@ and structure_item info str_item =
         let add_info id b = add_info id b in
         Hashtbl.iter add_info prog_known;
         let add_decl acc d = d :: acc in
-        let decls = List.fold_left add_decl Env.empty prog_body in
+        let decls = List.fold_left add_decl [] prog_body in
+        let decls = List.rev decls in
         add_env info.info_env fname decls
       end;
       (* else ...
@@ -251,7 +257,7 @@ and expression info expr =
         begin match find_builtin id with (* this should not raise Not_found *)
         | BNone -> List.fold_left mk_app expr1 exprl
         | BBuiltin s -> node_from_builtin s exprl
-        | BUnOp _ -> assert false (* TODO *) end
+        | BUnOp s -> node_from_unop s exprl end
     | _ -> List.fold_left mk_app expr1 exprl in
   match expr.P.pexp_desc with
   | Pexp_constant c -> Val (LitV (constant c))
