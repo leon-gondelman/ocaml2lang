@@ -86,8 +86,6 @@ and value =
 
 type decl = string * expr
 
-type env
-
 type builtin =
   | BNone
   | BBuiltin of string
@@ -103,16 +101,18 @@ type aneris_program = {
   prog_builtin: bool;
 }
 
+and env = (string * aneris_program) list
+
 val mk_env : unit -> env
 
-val iter_env : (string -> aneris_program -> unit) -> env -> unit
+val iter_env : ((string * aneris_program) -> unit) -> env -> unit
 
-val add_env : env -> string -> aneris_program -> unit
+val add_env : env -> string -> aneris_program -> env
 
 type 'a pp = Format.formatter -> 'a -> unit
 
-val pp_env :
-  pp_sep:(unit pp) -> pp_elts:(string pp) -> Format.formatter -> env -> unit
+val pp_env : pp_sep:(unit pp) -> pp_elts:(string pp) ->
+  Format.formatter -> env -> unit
 
 val mk_aneris_program :
   env -> decl list -> known_map -> bool -> aneris_program

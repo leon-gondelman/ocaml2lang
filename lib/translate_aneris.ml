@@ -42,12 +42,12 @@ open Ast
 
 type info = { (* auxiliary information needed for translation, such as
                  free variables, local variables, paths, etc. *)
-  info_lvars : (ident, unit) Hashtbl.t;
-  info_gvars : (ident, builtin) Hashtbl.t;
-  info_bultin: bool;
-  info_known : (string, builtin) Hashtbl.t;
-  info_deps  : (string, unit) Hashtbl.t;
-  info_env   : env;
+          info_lvars : (ident, unit) Hashtbl.t;
+          info_gvars : (ident, builtin) Hashtbl.t;
+          info_bultin: bool;
+          info_known : (string, builtin) Hashtbl.t;
+  mutable info_deps  : string list;
+  mutable info_env   : env;
   (* TODO: dependencies, in particular for [assert] *)
 }
 
@@ -56,7 +56,7 @@ let create_info info_bultin = {
   info_gvars = Hashtbl.create 16;
   info_bultin;
   info_known = Hashtbl.create 16;
-  info_deps  = Hashtbl.create 16;
+  info_deps  = [];
   info_env   = mk_env ();
 }
 
@@ -139,7 +139,8 @@ let node_from_unop s args = match s, args with
 
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
-  mk_aneris_program info.info_env body info.info_known info.info_bultin
+  let env = List.rev info.info_env in
+  mk_aneris_program env body info.info_known info.info_bultin
 
 and structure_item info str_item =
   let add_info id b = Hashtbl.add info.info_gvars id b in
@@ -174,14 +175,11 @@ and structure_item info str_item =
         (* add all known symbols to the gvars tables *)
         let add_info id b = add_info id b in
         Hashtbl.iter add_info prog_known;
-        (* let add_decl acc d = d :: acc in
-         * let decls = List.fold_left add_decl [] prog_body in
-         * let decls = List.rev decls in *)
-        add_env info.info_env fname p
+        info.info_env <- add_env info.info_env fname p
       end;
       (* else ...
               what should we do about [open] inside builtins? *)
-      Hashtbl.add info.info_deps fname ();
+      info.info_deps <- fname :: info.info_deps;
       []
   | Pstr_exception _ ->
       if is_builtin info then []

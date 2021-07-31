@@ -41,7 +41,7 @@ let () =
   let p = program fname in
   let fname = Filename.chop_extension fname in
   let not_builtin prog = not prog.prog_builtin in
-  let add_decls s prog =
+  let add_decls (s, prog) =
     if not_builtin prog then Queue.add (s, prog) opt_queue in
   Queue.add (fname, p) opt_queue;
   iter_env add_decls p.prog_env;

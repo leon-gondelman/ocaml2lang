@@ -20,11 +20,11 @@ let wait_receivefrom =
 
 let sendto_all =
   fun socket ns msg ->
-  list_iter (fun n -> let _ = sendTo socket msg n in ()) ns
+  list_iter (fun n -> let _l = sendTo socket msg n in ()) ns
 
 let sendto_all_set =
   fun socket x msg ->
-  set_iter (fun n -> let _ = sendTo socket msg n in ()) x
+  set_iter (fun n -> let _l = sendTo socket msg n in ()) x
 
 let receivefrom_all =
   fun socket nodes ->
