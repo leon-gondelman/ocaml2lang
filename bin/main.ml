@@ -66,21 +66,8 @@ let source fname =
   Queue.iter pp_queue deps_queue
 
 let () =
-  (* let root = ml_project.ml_root in
-   * let out = ml_project.ml_output in
-   * let imp = ml_project.ml_import in *)
   let src = ml_project.ml_source in
-  (* let dep = ml_project.ml_depend in *)
-  (* eprintf "ROOT:@.";
-   * eprintf "%s -> %s@." root out;
-   * eprintf "IMPORT:@.";
-   * Hashtbl.iter (fun k v -> eprintf "%s -> %s@." k v) imp;
-   * eprintf "SOURCES:@.";
-   * Hashtbl.iter
-   *   (fun k () -> eprintf "%s@." k; eprintf "%s@." (Filename.dirname k)) src; *)
   Hashtbl.iter (fun k () -> Queue.add k src_queue) src
-  (* eprintf "DEPENDENCIES:@.";
-   * Hashtbl.iter (fun k () -> eprintf "%s@." k) dep *)
 
 let () =
   let root = ml_project.ml_root in

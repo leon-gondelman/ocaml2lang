@@ -109,6 +109,8 @@ type aneris_program = {
 
 and env = (string * string * aneris_program) list
 
+val empty_program : aneris_program
+
 val mk_env : unit -> env
 
 val iter_env : ((string * string * aneris_program) -> unit) -> env -> unit

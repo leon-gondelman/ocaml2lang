@@ -7,14 +7,9 @@ IMPORT_PATH_PREFIX:
 
 ML_SOURCES:
 
-	aneris_lang/network.ml
-	aneris_lang/lang.ml
-	aneris_lang/notation.ml
-	aneris_lang/lib/assert.ml
 	aneris_lang/lib/network_util.ml
 	aneris_lang/lib/list.ml
 	aneris_lang/lib/set.ml
-	aneris_lang/lib/lock.ml
 
 ML_DEPENDENCIES:
 

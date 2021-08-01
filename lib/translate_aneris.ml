@@ -47,8 +47,8 @@ type info = { (* auxiliary information needed for translation, such as
   info_builtin : bool;
   info_known   : (string, builtin) Hashtbl.t;
   info_nmspace : (string, unit) Hashtbl.t;
-  mutable info_deps : string list;
-  mutable info_env  : env;
+  mutable info_deps   : string list;
+  mutable info_env    : env;
   (* TODO: dependencies, in particular for [assert] *)
 }
 
@@ -58,8 +58,8 @@ let create_info info_builtin = {
   info_builtin;
   info_known = Hashtbl.create 16;
   info_nmspace = Hashtbl.create 16;
-  info_deps  = [];
-  info_env   = mk_env ();
+  info_deps    = [];
+  info_env     = mk_env ();
 }
 
 let add_known info id builtin =
@@ -161,6 +161,13 @@ let find_file_deps info f =
     Hashtbl.iter check_file info.info_nmspace;
     failwith ("Dependency not found: " ^ f)
   with Found (s, path) -> s, path
+
+let add_assert info =
+  let nms = info.info_nmspace in
+  let exception Found of string in
+  try Hashtbl.iter (fun k () -> let fname = Filename.concat k "assert.v" in
+                     if Sys.file_exists fname then (raise (Found k))) nms
+  with Found s -> Format.eprintf "Found assert in %s@." s
 
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
@@ -440,6 +447,7 @@ and expression info expr =
      let expr2 = expression info e2 in
      App (mk_lamb BAnon expr2, expr1)
   | Pexp_assert e ->
+      add_assert info;
       Eassert (expression info e)
   | Pexp_open _ ->
       assert false (* TODO *)

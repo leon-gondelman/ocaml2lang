@@ -107,6 +107,13 @@ type aneris_program = {
 
 and env = (string * path * aneris_program) list
 
+let empty_program = {
+  prog_env = [];
+  prog_body = [];
+  prog_known = Hashtbl.create 16;
+  prog_builtin = true;
+}
+
 let mk_env () = []
 
 let add_env env id path progr =
