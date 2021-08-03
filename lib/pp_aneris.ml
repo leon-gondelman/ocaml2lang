@@ -4,16 +4,18 @@ open Format
 let list_of_pair p =
   let rec loop acc = function
     | Pair (e1, e2) ->
-        loop (e1 :: acc) e2
+       loop (e2 :: acc) e1
+    | Val (PairV (e1, e2)) ->
+       loop (Val e2 :: acc) (Val e1)
     | e -> e :: acc in
-  List.rev (loop [] p)
+  (loop [] p)
 
 let list_of_pairv p =
   let rec loop acc = function
     | PairV (e1, e2) ->
-        loop (e1 :: acc) e2
-  | e -> e :: acc in
-  List.rev (loop [] p)
+       loop (e2 :: acc) e1
+    | e -> e :: acc in
+  (loop [] p)
 
 let list_of_app app =
   let rec loop acc = function
@@ -63,8 +65,10 @@ let pp_litv fmt = function
 
 let rec pp_val ?(paren=false) fmt = function
   | LitV bl -> fprintf fmt "%a" pp_litv bl
-  | PairV _ as p -> let tuple = list_of_pairv p in
-      fprintf fmt "(@[<hov>%a@])" (pp_print_list ~pp_sep:pp_comma pp_val) tuple
+  | PairV _ as p ->
+      let tuple = list_of_pairv p in
+      fprintf fmt "(@[<hov>%a@])"
+        (pp_print_list ~pp_sep:pp_comma pp_val) tuple
   | InjLV v ->
       fprintf fmt (protect_on paren "InjLV %a") (pp_val ~paren:true) v
   | InjRV v ->
@@ -95,15 +99,19 @@ and pp_app paren fmt = function
 and pp_expr ?(paren=false) fmt = function
   | Val v -> pp_val fmt v
   | Var v -> pp_var fmt v
-  | Rec (f, x, e) -> pp_rec fmt paren f x e
-  | App (App _, _) as a -> let app = list_of_app a in
-      pp_app paren fmt app
+  | Rec (f, x, e) ->
+     pp_rec fmt paren f x e
+  | App (App _, _) as a ->
+     let app = list_of_app a in pp_app paren fmt app
+  (* Sequence *)
   | App (Rec (BAnon, BAnon, e2), e1) ->
       fprintf fmt (protect_on paren "@[<hov>%a ;;@ %a@]")
-        (pp_expr ~paren) e1 (pp_expr ~paren) e2
+        (pp_expr ~paren:false) e1 (pp_expr ~paren:false) e2
+  (* Let binding *)
   | App (Rec (BAnon, x, e2), e1) ->
       fprintf fmt (protect_on paren "@[<v>let: %a := %a in@ %a@]")
         pp_binder x (pp_expr ~paren) e1 (pp_expr ~paren) e2
+  (* Recursive let binding  *)
   | App (Rec (BNamed f, x, e2), e1) ->
      let retrieve = retrieve_args [] in
      let args, body = retrieve e2 in
@@ -152,16 +160,17 @@ and pp_expr ?(paren=false) fmt = function
        (pp_expr ~paren) e2
        (pp_expr ~paren) e3
   | FindFrom (e1, e2, e3) ->
-     fprintf fmt "FindFrom %a %a %a"
+     fprintf fmt (protect_on paren "FindFrom %a %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
        (pp_expr ~paren:true) e3
   | Substring (e1, e2, e3) ->
-     fprintf fmt "Substring %a %a %a"
+     fprintf fmt (protect_on paren "Substring %a %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
        (pp_expr ~paren:true) e3
-  | Pair _ as p -> let tuple = list_of_pair p in
-      fprintf fmt "(@[<hov>%a@])"
-        (pp_print_list ~pp_sep:pp_comma (pp_expr ~paren)) tuple
+  | Pair _ as p ->
+     let tuple = list_of_pair p in
+     fprintf fmt "(@[<hov>%a@])"
+       (pp_print_list ~pp_sep:pp_comma (pp_expr ~paren)) tuple
   | Fst e ->
       fprintf fmt (protect_on paren "Fst %a") (pp_expr ~paren:true) e
   | Snd  e ->
@@ -171,7 +180,8 @@ and pp_expr ?(paren=false) fmt = function
   | InjR e ->
       fprintf fmt (protect_on paren "InjR %a") (pp_expr ~paren:true) e
   | Case (e1, (c2, Rec (BAnon, b2, e2)), (c3, Rec (BAnon, b3, e3))) ->
-      fprintf fmt "match: %a with@\n@[<hov>%a@]@\nend"
+     fprintf fmt
+       (protect_on paren "match: %a with@\n@[<hov>%a@]@\nend")
         (pp_expr ~paren) e1 (pp_case c2 b2 e2 c3 b3) e3
   | Case _ -> assert false (* TODO for pairs ? *)
   | Fork e ->
@@ -179,31 +189,31 @@ and pp_expr ?(paren=false) fmt = function
   | Alloc (None, e) ->
       fprintf fmt (protect_on paren "ref %a") (pp_expr ~paren:true) e
   | Alloc (Some lbl, e) ->
-     fprintf fmt "ref<<%s>> %a" lbl (pp_expr ~paren:true) e
+     fprintf fmt (protect_on paren "ref<<%s>> %a") lbl (pp_expr ~paren:true) e
   | Load e ->
-     fprintf fmt "! %a" (pp_expr ~paren:true) e
+     fprintf fmt (protect_on paren"! %a") (pp_expr ~paren:true) e
   | Store (e1, e2) ->
       fprintf fmt (protect_on paren "%a <- %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
   | MakeAddress  (e1, e2) ->
-     fprintf fmt "MakeAddress %a %a"
+     fprintf fmt (protect_on paren "MakeAddress %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
   | NewSocket  (e1, e2, e3) ->
-      fprintf fmt "NewSocket %a %a %a"
+      fprintf fmt (protect_on paren "NewSocket %a %a %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
         (pp_expr ~paren:true) e3
   | SocketBind (e1, e2) ->
-     fprintf fmt "SocketBind %a %a"
+     fprintf fmt (protect_on paren "SocketBind %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
   | SendTo (e1, e2, e3) ->
-      fprintf fmt "SendTo %a %a %a"
+      fprintf fmt (protect_on paren "SendTo %a %a %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
         (pp_expr ~paren:true) e3
   | ReceiveFrom e1 ->
      fprintf fmt (protect_on paren "ReceiveFrom %a")
        (pp_expr ~paren:true) e1
   | SetReceiveTimeout (e1, e2, e3) ->
-     fprintf fmt "SendToSetReceiveTimeout %a %a %a"
+     fprintf fmt (protect_on paren "SendToSetReceiveTimeout %a %a %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
         (pp_expr ~paren:true) e3
   | ENone ->
@@ -243,9 +253,18 @@ and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
         | _ -> assert false end
   | _ -> assert false (* TODO *)
 
-let pp_decl fmt (id, expr) =
+let pp_decl_lang_expr fmt (id, expr) =
+  fprintf fmt "@[<hov 2>Definition %s : base_lang.expr :=@ @[%a@].@]"
+    id (pp_expr ~paren:false) expr
+
+let pp_decl_lang_val fmt (id, expr) =
   fprintf fmt "@[<hov 2>Definition %s : base_lang.val :=@ @[%a@].@]"
     id (pp_expr ~paren:false) expr
+
+let pp_decl fmt (id, expr) =
+  match expr with
+  | Val _ | ENone | Rec _ -> pp_decl_lang_val fmt (id, expr)
+  | _     -> pp_decl_lang_expr fmt (id, expr)
 
 let pp_program fmt p =
   fprintf fmt "@[%a@]@." (pp_print_list ~pp_sep:pp_newline2 pp_decl) p

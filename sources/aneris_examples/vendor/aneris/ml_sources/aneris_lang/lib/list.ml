@@ -1,3 +1,4 @@
+open Lang
 
 type 'a alist = ('a * 'a alist) option
 

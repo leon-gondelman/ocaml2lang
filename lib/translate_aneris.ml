@@ -83,6 +83,10 @@ let mk_bultin env known =
 let return_builtin info l =
   if is_builtin info then l else []
 
+let is_val = function
+  | Val _ -> true
+  | _ -> false
+
 let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   let is_builtin P.{attr_name = {txt; _}; _} =
     txt = "builtin" || txt = "UnOp" in
@@ -304,6 +308,9 @@ and expression info expr =
   let is_assign P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident ":="; _} -> true
     | _ -> false in
+  let is_load P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "!"; _} -> true
+    | _ -> false in
   let add_info id = Hashtbl.add info.info_lvars id () in
   (* let add_local_args args = List.iter add_info args in *)
   let remove_info id = Hashtbl.remove info.info_lvars id in
@@ -339,6 +346,8 @@ and expression info expr =
      Snd (expression info e)
   | Pexp_apply (f, [(_, e)]) when is_ref f ->
      Alloc (None, (expression info e))
+  | Pexp_apply (f, [(_, e)]) when is_load f ->
+     Load (expression info e)
   | Pexp_apply (f, [(_, e1); (_, e2)]) when is_assign f ->
       let expr1 = expression info e1 in
       let expr2 = expression info e2 in
@@ -398,12 +407,21 @@ and expression info expr =
       let expr1 = expression info expr1 in
       UnOp (NegOp, expr1)
   | Pexp_apply (e1, el) ->
-      mk_app e1 el
-  | Pexp_tuple (x :: xs) ->
-      let mk_tuple acc e = Pair (acc, e) in (* check for values *)
+     mk_app e1 el
+  | Pexp_tuple [expr1 ; expr2] ->
+     let e1 = expression info expr1 in
+     let e2 = expression info expr2 in
+     begin
+       match (e1, e2) with
+       | Val v1, Val v2 -> Val (PairV (v1, v2))
+       | _              -> Pair (e1, e2)
+     end
+  | Pexp_tuple (_x :: _y :: _) ->
+     assert false
+      (* let mk_tuple acc e = Pair (acc, e) in (* TODO: check for values *)
       let fst = expression info x in
       let snd = List.map (expression info) xs in
-      List.fold_left mk_tuple fst snd
+      List.fold_left mk_tuple fst snd *)
   | Pexp_tuple [] ->
       assert false (* TODO *)
   | Pexp_match (e, [c1; c2]) ->
