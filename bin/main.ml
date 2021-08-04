@@ -72,11 +72,11 @@ let generated = ref false
 let pp_generated fname =
   let fgen = "_generated" in
   let cout_gen =
-    if Sys.file_exists fgen && not !generated then begin
-      generated := true; open_out fgen end
-    else open_out_gen [Open_append] 0o666 fgen in
+    if Sys.file_exists fgen && not !generated then open_out fgen
+    else open_out_gen [Open_creat; Open_append] 0o666 fgen in
+  generated := true;
   let fout_gen = Format.formatter_of_out_channel cout_gen in
-  Format.eprintf "gen: %s@." fname;
+  Format.eprintf "Created: %s@." fname;
   Format.fprintf fout_gen "%s@." fname;
   close_out cout_gen
 
@@ -117,16 +117,17 @@ let source fname =
   pp_queue (fname, p)
 
 let () =
-  if clean_gen then
+  if clean_gen then begin
     let fgen = "_generated" in
     if Sys.file_exists fgen then begin
       let cin = open_in fgen in
       try while true do
           let fname = input_line cin in
+          Format.eprintf "Removed: %s@." fname;
           Sys.remove fname
         done
       with End_of_file -> close_in cin; Sys.remove fgen
-    end
+    end end
   else
     let root = ml_project.ml_root in
     let src = ml_project.ml_source in
