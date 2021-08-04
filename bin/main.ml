@@ -8,6 +8,7 @@ type bak = Backup | Rewrite
 
 let backup = ref Backup
 let gen = ref false
+let cleanall = ref false
 let src_queue = Queue.create ()
 
 let usage_msg = "ocaml2aneris [options]"
@@ -17,7 +18,9 @@ let spec = [ "--backup", Arg.Unit (fun () -> backup := Backup),
              "--rewrite", Arg.Unit (fun () -> backup := Rewrite),
              "rewrite existing .v files";
              "--clean", Arg.Unit (fun () -> gen := true),
-             "clean generated .v files"; ]
+             "clean generated .v files";
+             "--clean-all", Arg.Unit (fun () -> gen := true; cleanall := true),
+             "clean generated .v .v.bak files and _generated";]
 
 let usage () = Arg.usage spec usage_msg; exit 1
 
@@ -27,7 +30,7 @@ let () = Arg.parse spec set_file usage_msg
 
 let backup = !backup
 let clean_gen = !gen
-
+let clean_all = !cleanall
 let ml_project =
   let cin = open_in "_OCamlProject" in
   let lb = Lexing.from_channel cin in
@@ -74,6 +77,7 @@ let pp_generated fname =
   let cout_gen =
     if Sys.file_exists fgen && not !generated then open_out fgen
     else open_out_gen [Open_creat; Open_append] 0o666 fgen in
+  if  not !generated then Format.eprintf "Created: %s@." fgen;
   generated := true;
   let fout_gen = Format.formatter_of_out_channel cout_gen in
   Format.eprintf "Created: %s@." fname;
@@ -81,8 +85,12 @@ let pp_generated fname =
   close_out cout_gen
 
 let pp_program fname prog =
-  if Sys.file_exists fname then begin match backup with
-    | Backup  -> let backup = fname ^ ".bak" in Sys.rename fname backup
+  if Sys.file_exists fname then
+    begin match backup with
+    | Backup  ->
+       let backup = fname ^ ".bak" in
+       Format.eprintf "Renamed: %s --> %s@." fname backup;
+       Sys.rename fname backup
     | Rewrite -> () end;
   let cout = open_out fname in
   let fout = formatter_of_out_channel cout in
@@ -122,12 +130,32 @@ let () =
     if Sys.file_exists fgen then begin
       let cin = open_in fgen in
       try while true do
-          let fname = input_line cin in
-          Format.eprintf "Removed: %s@." fname;
-          Sys.remove fname
-        done
-      with End_of_file -> close_in cin; Sys.remove fgen
-    end end
+            let fname = input_line cin in
+            begin
+              try
+                Sys.remove fname;
+                Format.eprintf "Removed: %s@." fname
+              with Sys_error _ -> () end;
+            begin
+              if clean_all
+              then
+                try
+                  let fnamebak = fname ^ ".bak" in
+                  Sys.remove fnamebak;
+                  Format.eprintf "Removed: %s@." fnamebak
+                with Sys_error _ -> () end;
+          done
+      with End_of_file ->
+        close_in cin;
+        begin
+        if clean_all
+        then
+          try
+           Sys.remove fgen;
+           Format.eprintf "Removed: %s@." fgen
+          with Sys_error _ -> ()
+        end
+      end end
   else
     let root = ml_project.ml_root in
     let src = ml_project.ml_source in
