@@ -4,7 +4,25 @@ open Format
 
 open Ast
 
+type bak = Backup | Rewrite
+
+let backup = ref Backup
 let src_queue = Queue.create ()
+
+let usage_msg = "ocaml2aneris [options]"
+
+let spec = [ "--backup", Arg.Unit (fun () -> backup := Backup),
+             "create .bak files when there exists a .v file";
+             "--rewrite", Arg.Unit (fun () -> backup := Rewrite),
+             "rewrite existing .v files" ]
+
+let usage () = Arg.usage spec usage_msg; exit 1
+
+let set_file _ = () (* TODO: patch in case we decide to have cl files *)
+
+let () = Arg.parse spec set_file usage_msg
+
+let backup = !backup
 
 let ml_project =
   let cin = open_in "_OCamlProject" in
@@ -46,13 +64,10 @@ let create_sub_dirs dirname =
   if dirname <> "." then create_sub_dirs dirname
 
 let pp_program fname prog =
-  let output = ml_project.ml_output in
-  let fname = Filename.chop_extension fname in
-  let fout_name = (String.uncapitalize_ascii fname) ^ ".v" in
-  let fout_name = mk_output output fout_name in
-  let dirname = Filename.dirname fout_name in
-  create_sub_dirs dirname;
-  let cout = open_out fout_name in
+  if Sys.file_exists fname then begin match backup with
+    | Backup  -> let backup = fname ^ ".bak" in Sys.rename fname backup
+    | Rewrite -> () end;
+  let cout = open_out fname in
   let fout = formatter_of_out_channel cout in
   let decls = prog.prog_body in
   let env = prog.prog_env in
@@ -60,6 +75,23 @@ let pp_program fname prog =
     (Format.pp_print_list ~pp_sep:pp_newline pp_deps) env
     Pp_aneris.pp_program decls;
   close_out cout
+
+let pp_program fname prog =
+  let output = ml_project.ml_output in
+  let fname = Filename.chop_extension fname in
+  let fout_name = (String.uncapitalize_ascii fname) ^ ".v" in
+  let fout_name = mk_output output fout_name in
+  let dirname = Filename.dirname fout_name in
+  create_sub_dirs dirname;
+  pp_program fout_name prog
+  (* let cout = open_out fout_name in
+   * let fout = formatter_of_out_channel cout in
+   * let decls = prog.prog_body in
+   * let env = prog.prog_env in
+   * fprintf fout "@[%a@]@\n@\n@[%a@]"
+   *   (Format.pp_print_list ~pp_sep:pp_newline pp_deps) env
+   *   Pp_aneris.pp_program decls;
+   * close_out cout *)
 
 let pp_queue (s, prog) =
   pp_program s prog
