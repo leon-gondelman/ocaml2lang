@@ -48,12 +48,16 @@ let pp_newline fmt () = fprintf fmt "@\n"
 let pp_dot fmt () = fprintf fmt "."
 
 let pp_deps fmt (dep, path, _) =
+  let exception Found of string list in
+  let rec mk_import real key bind = match real, key with
+    | _, [] -> raise (Found (bind :: real))
+    | x :: xs, y :: ys when x = y -> mk_import xs ys bind
+    | _ -> () in
+  let mk_import real key = mk_import real (String.split_on_char '/' key) in
   let import = ml_project.ml_import in
-  let map_import x = Hashtbl.find import x in
   let path = String.split_on_char '/' path in
-  let path = match path with
-    | x :: xs -> map_import x :: xs
-    | _ -> assert false in
+  let path = try Hashtbl.iter (mk_import path) import; path
+    with Found p -> p in
   fprintf fmt "From @[%a@] Require Import %s."
     (pp_print_list ~pp_sep:pp_dot pp_print_string) path dep
 
@@ -62,8 +66,7 @@ let perm = 0o700
 let create_sub_dirs dirname =
   let dirs = String.split_on_char '/' dirname in
   let fdir acc f = Filename.concat acc f in
-  let mkdir f =
-    if not (Sys.file_exists f) then Unix.mkdir f perm in
+  let mkdir f = if not (Sys.file_exists f) then Unix.mkdir f perm in
   let acc = ref "" in
   List.iter (fun f -> acc := fdir !acc f; mkdir !acc) dirs
 
@@ -118,7 +121,8 @@ let source fname =
   let root = ml_project.ml_root in
   let deps = ml_project.ml_depend in
   let nms = Hashtbl.create 16 in
-  let add_dep k () = let fname = Filename.concat root k in
+  let add_dep k b =
+    let fname = if b then k else Filename.concat root k in
     Hashtbl.add nms fname () in
   Hashtbl.iter add_dep deps;
   let p = program nms fname in

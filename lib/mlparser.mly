@@ -5,7 +5,7 @@
       | ROutput of string * string
       | RImport of (string * string) list
       | RSource of string list
-      | RDepend of string list
+      | RDepend of (string * bool) list
 
     let mk_output (s1, s2) = ROutput (s1, s2)
 
@@ -14,7 +14,7 @@
         mutable uc_output : string;
         uc_import : (string, string) Hashtbl.t;
         uc_source : (string, unit) Hashtbl.t;
-        uc_depend : (string, unit) Hashtbl.t;
+        uc_depend : (string, bool) Hashtbl.t;
       }
 
     let mk_uc_ml_project () = {
@@ -40,7 +40,7 @@
       let add_imps l = List.iter add_imp l in
       let add_src s = Hashtbl.add uc.uc_source s () in
       let add_srcs l = List.iter add_src l in
-      let add_dep s = Hashtbl.add uc.uc_depend s () in
+      let add_dep (s, b) = Hashtbl.add uc.uc_depend s b in
       let add_deps l = List.iter add_dep l in
       let dispatch = function
         | ROutput (s1, s2) -> add_outs (s1, s2)
@@ -53,6 +53,7 @@
 %}
 
 %token <string> LIDENT
+%token VENDOR
 %token EOF
 %token COMMA
 %token OUTPUT IMPORT SOURCES DEPENDENCIES
@@ -69,7 +70,7 @@ section:
 | OUTPUT COMMA map = assoc { mk_output map }
 | IMPORT COMMA map = assoc* { RImport map }
 | SOURCES COMMA source = source* { RSource source }
-| DEPENDENCIES COMMA source = source* { RDepend source }
+| DEPENDENCIES COMMA source = vendor_source* { RDepend source }
 ;
 
 assoc:
@@ -79,3 +80,6 @@ assoc:
 source:
 | id = LIDENT { id }
 ;
+
+vendor_source:
+| v = boption(VENDOR) id = LIDENT { (id, v) }

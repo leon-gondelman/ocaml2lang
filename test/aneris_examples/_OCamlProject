@@ -12,7 +12,8 @@ ML_SOURCES:
 	crdt/gcounter/code.ml
 
 ML_DEPENDENCIES:
-        aneris_examples/ml_sources/util
-        aneris_examples/ml_sources/ping_pong
-        aneris_examples/ml_sources/crdt/gcounter
-	vendor/aneris/ml_sources/aneris_lang/
+        util
+        ping_pong
+        crdt/gcounter
+	-V vendor/aneris/ml_sources/aneris_lang/
+	-V vendor/aneris/ml_sources/aneris_lang/lib

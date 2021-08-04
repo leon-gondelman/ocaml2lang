@@ -3,7 +3,7 @@ type ml_project = {
   ml_output : string;
   ml_import : (string, string) Hashtbl.t;
   ml_source : (string, unit) Hashtbl.t;
-  ml_depend : (string, unit) Hashtbl.t;
+  ml_depend : (string, bool) Hashtbl.t;
 }
 
 let mk_ml_project ml_root ml_output = {

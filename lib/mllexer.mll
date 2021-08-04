@@ -69,6 +69,8 @@ rule token = parse
       { token lexbuf }
   | ":"
       { COMMA }
+  | "-V"
+      { VENDOR }
   | uuident as id
       { get_keyword id }
   | lident as id
