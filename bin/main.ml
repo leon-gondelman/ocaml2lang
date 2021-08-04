@@ -47,6 +47,11 @@ let mk_output output fname =
 let pp_newline fmt () = fprintf fmt "@\n"
 let pp_dot fmt () = fprintf fmt "."
 
+let rec chop_last = function
+  | [s] when s = "" -> []
+  | x :: xs -> x :: chop_last xs
+  | [] -> []
+
 let pp_deps fmt (dep, path, _) =
   let exception Found of string list in
   let rec mk_import real key bind = match real, key with
@@ -56,6 +61,7 @@ let pp_deps fmt (dep, path, _) =
   let mk_import real key = mk_import real (String.split_on_char '/' key) in
   let import = ml_project.ml_import in
   let path = String.split_on_char '/' path in
+  let path = chop_last path in
   let path = try Hashtbl.iter (mk_import path) import; path
     with Found p -> p in
   fprintf fmt "From @[%a@] Require Import %s."
