@@ -2,11 +2,8 @@ open Ocaml2lang
 open Translate_aneris
 open Format
 
-(* let fname = Sys.argv.(1) *)
-
 open Ast
 
-let deps_queue = Queue.create ()
 let src_queue = Queue.create ()
 
 let ml_project =
@@ -35,7 +32,7 @@ let pp_deps fmt (dep, path, _) =
   fprintf fmt "From @[%a@] Require Import %s."
     (pp_print_list ~pp_sep:pp_dot pp_print_string) path dep
 
-let perm = 0o775
+let perm = 0o700
 
 let create_sub_dirs dirname =
   let dirs = String.split_on_char '/' dirname in
@@ -50,6 +47,7 @@ let create_sub_dirs dirname =
 
 let pp_program fname prog =
   let output = ml_project.ml_output in
+  let fname = Filename.chop_extension fname in
   let fout_name = (String.uncapitalize_ascii fname) ^ ".v" in
   let fout_name = mk_output output fout_name in
   let dirname = Filename.dirname fout_name in
@@ -74,20 +72,12 @@ let source fname =
     Hashtbl.add nms fname () in
   Hashtbl.iter add_dep deps;
   let p = program nms fname in
-  let fname = Filename.chop_extension fname in
-  let not_builtin prog = not prog.prog_builtin in
-  Queue.add (fname, p) deps_queue;
-  let add_decls (s, _path, prog) =
-    if not_builtin prog then Queue.add (s, prog) deps_queue in
-  iter_env add_decls p.prog_env;
-  Queue.iter pp_queue deps_queue
-
-let () =
-  let src = ml_project.ml_source in
-  Hashtbl.iter (fun k () -> Queue.add k src_queue) src
+  pp_queue (fname, p)
 
 let () =
   let root = ml_project.ml_root in
+  let src = ml_project.ml_source in
+  Hashtbl.iter (fun k () -> Queue.add k src_queue) src;
   let process_source s = let fname = Filename.concat root s in
     source fname in
   Queue.iter process_source src_queue
