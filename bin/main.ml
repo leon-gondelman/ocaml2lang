@@ -7,6 +7,7 @@ open Ast
 type bak = Backup | Rewrite
 
 let backup = ref Backup
+let gen = ref false
 let src_queue = Queue.create ()
 
 let usage_msg = "ocaml2aneris [options]"
@@ -14,7 +15,9 @@ let usage_msg = "ocaml2aneris [options]"
 let spec = [ "--backup", Arg.Unit (fun () -> backup := Backup),
              "create .bak files when there exists a .v file";
              "--rewrite", Arg.Unit (fun () -> backup := Rewrite),
-             "rewrite existing .v files" ]
+             "rewrite existing .v files";
+             "--clean", Arg.Unit (fun () -> gen := true),
+             "clean generated .v files"; ]
 
 let usage () = Arg.usage spec usage_msg; exit 1
 
@@ -23,6 +26,7 @@ let set_file _ = () (* TODO: patch in case we decide to have cl files *)
 let () = Arg.parse spec set_file usage_msg
 
 let backup = !backup
+let clean_gen = !gen
 
 let ml_project =
   let cin = open_in "_OCamlProject" in
@@ -63,6 +67,19 @@ let create_sub_dirs dirname =
 let create_sub_dirs dirname =
   if dirname <> "." then create_sub_dirs dirname
 
+let generated = ref false
+
+let pp_generated fname =
+  let fgen = "_generated" in
+  let cout_gen =
+    if Sys.file_exists fgen && not !generated then begin
+      generated := true; open_out fgen end
+    else open_out_gen [Open_append] 0o666 fgen in
+  let fout_gen = Format.formatter_of_out_channel cout_gen in
+  Format.eprintf "gen: %s@." fname;
+  Format.fprintf fout_gen "%s@." fname;
+  close_out cout_gen
+
 let pp_program fname prog =
   if Sys.file_exists fname then begin match backup with
     | Backup  -> let backup = fname ^ ".bak" in Sys.rename fname backup
@@ -74,7 +91,8 @@ let pp_program fname prog =
   fprintf fout "@[%a@]@\n@\n@[%a@]"
     (Format.pp_print_list ~pp_sep:pp_newline pp_deps) env
     Pp_aneris.pp_program decls;
-  close_out cout
+  close_out cout;
+  pp_generated fname
 
 let pp_program fname prog =
   let output = ml_project.ml_output in
@@ -84,14 +102,6 @@ let pp_program fname prog =
   let dirname = Filename.dirname fout_name in
   create_sub_dirs dirname;
   pp_program fout_name prog
-  (* let cout = open_out fout_name in
-   * let fout = formatter_of_out_channel cout in
-   * let decls = prog.prog_body in
-   * let env = prog.prog_env in
-   * fprintf fout "@[%a@]@\n@\n@[%a@]"
-   *   (Format.pp_print_list ~pp_sep:pp_newline pp_deps) env
-   *   Pp_aneris.pp_program decls;
-   * close_out cout *)
 
 let pp_queue (s, prog) =
   pp_program s prog
@@ -107,9 +117,20 @@ let source fname =
   pp_queue (fname, p)
 
 let () =
-  let root = ml_project.ml_root in
-  let src = ml_project.ml_source in
-  Hashtbl.iter (fun k () -> Queue.add k src_queue) src;
-  let process_source s = let fname = Filename.concat root s in
-    source fname in
-  Queue.iter process_source src_queue
+  if clean_gen then
+    let fgen = "_generated" in
+    if Sys.file_exists fgen then begin
+      let cin = open_in fgen in
+      try while true do
+          let fname = input_line cin in
+          Sys.remove fname
+        done
+      with End_of_file -> close_in cin; Sys.remove fgen
+    end
+  else
+    let root = ml_project.ml_root in
+    let src = ml_project.ml_source in
+    Hashtbl.iter (fun k () -> Queue.add k src_queue) src;
+    let process_source s = let fname = Filename.concat root s in
+      source fname in
+    Queue.iter process_source src_queue
