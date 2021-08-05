@@ -8,10 +8,11 @@ module Read = struct
   type structure = {
     str_builtin: bool;
     str_program: P.structure;
+    str_fname : string;
   }
 
-  let mk_structure ?(str_builtin=false) str_program =
-    { str_builtin; str_program }
+  let mk_structure ?(str_builtin=false) str_program str_fname =
+    { str_builtin; str_program; str_fname}
 
   type builtin = string list
 
@@ -34,7 +35,7 @@ module Read = struct
     let lb = Lexing.from_channel cin in
     let str_program = Parser.implementation Lexer.token lb in
     let str_builtin = Hashtbl.mem builtin fname in
-    mk_structure ~str_builtin str_program
+    mk_structure ~str_builtin str_program fname
 
 end
 
@@ -47,17 +48,19 @@ type info = { (* auxiliary information needed for translation, such as
   info_builtin : bool;
   info_known   : (string, builtin) Hashtbl.t;
   info_nmspace : (string, unit) Hashtbl.t;
+  info_fname   : string;
   mutable info_deps   : string list;
   mutable info_env    : env;
   (* TODO: dependencies, in particular for [assert] *)
 }
 
-let create_info info_builtin = {
+let create_info info_builtin fname = {
   info_lvars = Hashtbl.create 16;
   info_gvars = Hashtbl.create 16;
   info_builtin;
   info_known = Hashtbl.create 16;
   info_nmspace = Hashtbl.create 16;
+  info_fname = fname;
   info_deps    = [];
   info_env     = mk_env ();
 }
@@ -95,7 +98,7 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
         [{ pstr_desc =
              Pstr_eval
                ({ pexp_desc =
-                    Pexp_constant (Pconst_string (spec, _, _)); _ }, _);
+                    Pexp_constant (Pconst_string (spec, _)); _ }, _);
            _ };] -> spec
     | _ -> assert false in
   let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
@@ -145,11 +148,8 @@ let node_from_builtin s args = match s, args with
   | "Acquire", [expr] ->
       EAcquire expr
   | "Release", [expr] ->
-      ERelease expr
-  | x, l ->
-     Format.eprintf
-       "Built-in '%s' with %d arguments is not (yet) supported.\n%!"
-       x (List.length l); assert false
+     ERelease expr
+  | _ -> assert false
 
 let node_from_unop s args = match s, args with
   | "StringLength", [expr] ->
@@ -166,7 +166,10 @@ let find_file_deps info f =
     let check_file k () = let fname = Filename.concat k f in
       if Sys.file_exists fname then raise (Found (f, k)) in
     Hashtbl.iter check_file info.info_nmspace;
-    failwith ("Dependency not found: " ^ f)
+    Format.eprintf
+      "\nIn file %s \n  dependency %s not found.\n"
+      info.info_fname f;
+    exit 1
   with Found (s, path) -> s, path
 
 let add_assert info =
@@ -189,7 +192,7 @@ and structure_item info str_item =
       if is_builtin info then
         value_binding_bultin info val_bind
       else
-        let id, expr = value_binding info val_bind in
+        let id, expr = value_binding info val_bind  in
         add_info id BNone;
         add_known id BNone;
         [(id, expr)]
@@ -197,7 +200,7 @@ and structure_item info str_item =
       if is_builtin info then
         value_binding_bultin info val_bind
       else
-        let id, expr = value_binding info val_bind in
+        let id, expr = value_binding info val_bind  in
         let arg, body = match expr with
           | Rec (_, b, e) -> b, e
           | _ -> assert false in
@@ -224,18 +227,27 @@ and structure_item info str_item =
               what should we do about [open] inside builtins? *)
       info.info_deps <- fname :: info.info_deps;
       []
-  | Pstr_exception _ ->
+  | Pstr_exception te ->
       if is_builtin info then []
-      else failwith "Exceptions not supported"
+      else begin
+          Format.eprintf
+             "\nIn file %s at line %d:\n  exceptions are not supported."
+             info.info_fname te.ptyexn_loc.loc_start.pos_lnum;
+          exit 1
+        end
   | _ -> assert false (* TODO *)
 
-and value_binding info {pvb_pat; pvb_expr; _} =
-  let add_info_lvar id = Hashtbl.add info.info_lvars id () in
-  (* let add_info_lvar id =
-   *   begin match Hashtbl.find_opt info.info_known id with
-   *   | None (\* | Some BNone *\) -> Hashtbl.add info.info_lvars id ()
-   *   | _ -> Format.eprintf "The keyword %s is reserved.\n" id; assert false
-   *   end in *)
+and value_binding info {pvb_pat; pvb_expr; pvb_loc; _ } =
+  (* let add_info_lvar id = Hashtbl.add info.info_lvars id () in *)
+  let add_info_lvar id =
+    begin match Hashtbl.find_opt info.info_gvars id with
+    | None -> Hashtbl.add info.info_lvars id ()
+    | _ ->
+       Format.eprintf
+         "\nIn file %s at line %d:\n  The keyword %s is reserved.\n"
+         info.info_fname pvb_loc.loc_start.pos_lnum id;
+       exit 1
+    end in
   let remove_info_lvar id = Hashtbl.remove info.info_lvars id in
   let id = name_of_pat pvb_pat in
   add_info_lvar id;
@@ -248,15 +260,20 @@ and string_of_longident = function
   | Lident s -> s
   | Ldot (id, s) -> (string_of_longident id) ^ "_" ^ s
 
-and longident info = function
+and longident info t l = match t with
   | Lapply _ -> assert false (* TODO *)
   | Lident s ->
       if Hashtbl.mem info.info_lvars s then Vlvar s
       else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
-      else failwith ("Global symbol: '" ^ s ^ "' not found.")
+      else begin
+          Format.eprintf
+            ("\nIn file %s at line %d:\n  symbol: '%s' is undefined.")
+            info.info_fname l.loc_start.pos_lnum s;
+          exit 1
+        end
   | Ldot (t, s) ->
       (* TODO: open external modules *)
-      let v = longident info t in
+      let v = longident info t l in
       match v with
       | Vgvar x -> Vgvar (Gdot (x, s))
       | Vlvar _ -> assert false
@@ -319,12 +336,15 @@ and expression info expr =
   let is_load P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "!"; _} -> true
     | _ -> false in
-  let add_info_lvar id = Hashtbl.add info.info_lvars id () in
-  (* let add_info_lvar id =
-   *   begin match Hashtbl.find_opt info.info_known id with
-   *   | None (\* | Some BNone *\) -> Hashtbl.add info.info_lvars id ()
-   *   | _ -> Format.eprintf "The keyword %s is reserved.\n" id; assert false
-   *   end in *)
+  (* let add_info_lvar id = Hashtbl.add info.info_lvars id () in *)
+  let add_info_lvar id loc =
+    begin match Hashtbl.find_opt info.info_gvars id with
+    | None -> Hashtbl.add info.info_lvars id ()
+    | _ -> Format.eprintf
+             "\nIn file %s at line %d:\n  The keyword %s is reserved.\n"
+             info.info_fname loc.loc_start.pos_lnum id;
+          exit 1
+    end in
   (* let add_local_args args = List.iter add_info args in *)
   let remove_info_lvar id = Hashtbl.remove info.info_lvars id in
   (* let remove_local_args args = List.iter remove_info args in *)
@@ -344,7 +364,7 @@ and expression info expr =
   match expr.P.pexp_desc with
   | Pexp_constant c -> Val (LitV (constant c))
   | Pexp_construct (c,o) -> construct info (c,o)
-  | Pexp_ident t -> Var (longident info t.txt)
+  | Pexp_ident t -> Var (longident info t.txt t.loc)
   | Pexp_fun (Nolabel, None, pat, expr) ->
      let id = name_of_pat pat in
      begin
@@ -353,7 +373,7 @@ and expression info expr =
           let expr = expression info expr in
           Rec (BAnon, BAnon, expr)
        | _ ->
-          add_info_lvar id;
+          add_info_lvar id pat.ppat_loc;
           let expr = expression info expr in
           remove_info_lvar id;
           Rec (BAnon, BNamed id, expr)
@@ -460,13 +480,13 @@ and expression info expr =
      assert false
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
       let id, expr = value_binding info val_bind in
-      add_info_lvar id;
+      add_info_lvar id val_bind.pvb_pat.ppat_loc;
       let expr2 = expression info e2 in
       remove_info_lvar id;
       App (mk_lamb (BNamed id) expr2, expr)
   | Pexp_let (Recursive, [{pvb_pat; _} as val_bind], e2) ->
       let fun_name = name_of_pat pvb_pat in
-      add_info_lvar fun_name;
+      add_info_lvar fun_name pvb_pat.ppat_loc;
       let _id, expr = value_binding info val_bind in
       let expr2 = expression info e2 in
       remove_info_lvar fun_name;
@@ -498,12 +518,15 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
   let get_var_of_pat P.{ppat_desc; _} = match ppat_desc with
     | Ppat_var {txt; _} -> txt
     | _ -> assert false in
-  let add_info_lvar id = Hashtbl.add info.info_lvars id () in
-  (* let add_info_lvar id =
-   *   begin match Hashtbl.find_opt info.info_known id with
-   *   | None (\* | Some BNone *\) -> Hashtbl.add info.info_lvars id ()
-   *   | _ -> Format.eprintf "The keyword %s is reserved.\n" id; assert false
-   *   end in *)
+  (* let add_info_lvar id = Hashtbl.add info.info_lvars id () in *)
+  let add_info_lvar id loc =
+    begin match Hashtbl.find_opt info.info_gvars id with
+    | None -> Hashtbl.add info.info_lvars id ()
+    | _ -> Format.eprintf
+             "\nIn file %s at line %d:\n  The keyword %s is reserved.\n"
+             info.info_fname loc.loc_start.pos_lnum id;
+           assert false
+    end in
   let pat_desc P.{ppat_desc; _} = match ppat_desc with
     | P.Ppat_any -> assert false (* TODO *)
     | Ppat_var _ ->
@@ -514,14 +537,15 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
         "InjL", BAnon
     | Ppat_construct ({txt = Lident "InjL"; _}, Some p) ->
         let v = get_var_of_pat p in
-        add_info_lvar v;
+        add_info_lvar v p.ppat_loc;
         "InjL", BNamed v
     | Ppat_construct ({txt = Lident "InjR"; _}, Some p) ->
         let v = get_var_of_pat p in
-        add_info_lvar v;
+        add_info_lvar v p.ppat_loc;
         "InjR", BNamed v
-    | Ppat_construct ({txt = Lident p; _}, Some {ppat_desc = Ppat_var s; _}) ->
-        add_info_lvar s.txt;
+    | Ppat_construct ({txt = Lident p; _},
+                      Some ({ppat_desc = Ppat_var s; _} as pat)) ->
+        add_info_lvar s.txt pat.ppat_loc;
         p, BNamed s.txt
     | _ -> assert false (* TODO *) in
   let txt, binder = pat_desc pc_lhs in
@@ -530,7 +554,7 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
 
 and constant = function
     Pconst_integer (t, _) -> LitInt (int_of_string t)
-  | Pconst_string (s, _, _) -> LitString s
+  | Pconst_string (s, _) -> LitString s
   | Pconst_char c -> LitString (Char.escaped c)
   | Pconst_float _ -> assert false (* not implemented in AnerisLang *)
 
@@ -570,18 +594,11 @@ and construct info = function
 
 and program nms fname =
   let open Read in
-  let {str_builtin; str_program} = ptree fname in
-  let info = create_info str_builtin in
+  let {str_builtin; str_program; str_fname} = ptree fname in
+  let info = create_info str_builtin str_fname in
   Hashtbl.iter (fun k () -> Hashtbl.add info.info_nmspace k ()) nms;
   structure info str_program
 
 let ptree_of_string s =
   let lb = Lexing.from_string s in
   Parser.implementation Lexer.token lb
-
-open Pp_aneris
-
-let%expect_test _ =
-  pp_program Format.std_formatter
-    (structure (create_info false) (ptree_of_string "let f x = x")).prog_body;
-  [%expect {| Definition f : base_lang.val := λ: "x", "x". |}]

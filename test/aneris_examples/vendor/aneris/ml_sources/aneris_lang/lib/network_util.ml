@@ -8,33 +8,40 @@ let unSOME o = match o with
     None -> assert false
   | Some x -> x
 
-let sendto_all socket ns msg =
-  list_iter (fun n -> sendTo socket msg n) ns
+let sendto_all skt ns msg =
+  list_iter (fun n -> sendTo skt msg n) ns
 
-let wait_receivefrom =
-  fun socket test ->
+let rec listen skt handler =
+  match receiveFrom skt with
+  | Some m ->
+     let msg = fst m in
+     let sender = snd m in
+     handler msg sender
+  | None -> listen skt handler
+
+let wait_receivefrom skt test =
   let rec loop () =
-     let msg = unSOME (receiveFrom socket) in
+     let msg = unSOME (receiveFrom skt) in
      if test msg then msg else loop () in
   loop ()
 
 let sendto_all_set =
-  fun socket x msg ->
-  set_iter (fun n -> let _l = sendTo socket msg n in ()) x
+  fun skt x msg ->
+  set_iter (fun n -> let _l = sendTo skt msg n in ()) x
 
 let receivefrom_all =
-  fun socket nodes ->
+  fun skt nodes ->
   let rec recv n =
-    let msg = unSOME (receiveFrom socket) in
+    let msg = unSOME (receiveFrom skt) in
     let sender = snd msg in
     if sender = n then (fst msg)
     else recv n in
   list_fold  (fun acc n -> list_append acc (Some (recv n, None))) None nodes
 
 let wait_receivefrom_all =
-  fun socket nodes test ->
+  fun skt nodes test ->
   let rec recv n =
-    let msg = unSOME (receiveFrom socket) in
+    let msg = unSOME (receiveFrom skt) in
     let sender = snd msg in
     let m = fst msg in
     if (sender = n) && (test m) then m

@@ -6,14 +6,6 @@ open Serialization_base
 
 let mk_udp_socket () = socket PF_INET SOCK_DGRAM IPPROTO_UDP
 
-let rec listen skt handler =
-  match receiveFrom skt with
-  | Some m ->
-     let msg = fst m in
-     let sender = snd m in
-     handler msg sender
-  | None -> listen skt handler
-
 let server_aux addr j0 =
   let sckt = mk_udp_socket () in
   socketBind sckt addr;
