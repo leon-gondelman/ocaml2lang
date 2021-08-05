@@ -98,7 +98,7 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
         [{ pstr_desc =
              Pstr_eval
                ({ pexp_desc =
-                    Pexp_constant (Pconst_string (spec, _)); _ }, _);
+                    Pexp_constant (Pconst_string (spec, _, _)); _ }, _);
            _ };] -> spec
     | _ -> assert false in
   let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
@@ -554,7 +554,7 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
 
 and constant = function
     Pconst_integer (t, _) -> LitInt (int_of_string t)
-  | Pconst_string (s, _) -> LitString s
+  | Pconst_string (s, _, _) -> LitString s
   | Pconst_char c -> LitString (Char.escaped c)
   | Pconst_float _ -> assert false (* not implemented in AnerisLang *)
 
