@@ -124,7 +124,7 @@ let node_from_builtin s args = match s, args with
       ReceiveFrom expr
   | "SetReceiveTimeout", [expr1; expr2; expr3] ->
       SetReceiveTimeout (expr1, expr2, expr3)
-  | "SubString", [expr1; expr2; expr3] ->
+  | "Substring", [expr1; expr2; expr3] ->
       Substring (expr1, expr2, expr3)
   | "FindFrom", [expr1; expr2; expr3] ->
       FindFrom (expr1, expr2, expr3)
@@ -146,7 +146,10 @@ let node_from_builtin s args = match s, args with
       EAcquire expr
   | "Release", [expr] ->
       ERelease expr
-  | _ -> assert false (* TODO *)
+  | x, l ->
+     Format.eprintf
+       "Built-in '%s' with %d arguments is not (yet) supported.\n%!"
+       x (List.length l); assert false
 
 let node_from_unop s args = match s, args with
   | "StringLength", [expr] ->
@@ -227,12 +230,17 @@ and structure_item info str_item =
   | _ -> assert false (* TODO *)
 
 and value_binding info {pvb_pat; pvb_expr; _} =
-  let add_info id = Hashtbl.add info.info_lvars id () in
-  let remove_info id = Hashtbl.remove info.info_lvars id in
+  let add_info_lvar id = Hashtbl.add info.info_lvars id () in
+  (* let add_info_lvar id =
+   *   begin match Hashtbl.find_opt info.info_known id with
+   *   | None (\* | Some BNone *\) -> Hashtbl.add info.info_lvars id ()
+   *   | _ -> Format.eprintf "The keyword %s is reserved.\n" id; assert false
+   *   end in *)
+  let remove_info_lvar id = Hashtbl.remove info.info_lvars id in
   let id = name_of_pat pvb_pat in
-  add_info id;
+  add_info_lvar id;
   let expr = expression info pvb_expr in
-  remove_info id;
+  remove_info_lvar id;
   id, expr
 
 and string_of_longident = function
@@ -245,7 +253,7 @@ and longident info = function
   | Lident s ->
       if Hashtbl.mem info.info_lvars s then Vlvar s
       else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
-      else failwith ("Unautorized global symbol: " ^ s)
+      else failwith ("Global symbol: '" ^ s ^ "' not found.")
   | Ldot (t, s) ->
       (* TODO: open external modules *)
       let v = longident info t in
@@ -311,9 +319,14 @@ and expression info expr =
   let is_load P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "!"; _} -> true
     | _ -> false in
-  let add_info id = Hashtbl.add info.info_lvars id () in
+  let add_info_lvar id = Hashtbl.add info.info_lvars id () in
+  (* let add_info_lvar id =
+   *   begin match Hashtbl.find_opt info.info_known id with
+   *   | None (\* | Some BNone *\) -> Hashtbl.add info.info_lvars id ()
+   *   | _ -> Format.eprintf "The keyword %s is reserved.\n" id; assert false
+   *   end in *)
   (* let add_local_args args = List.iter add_info args in *)
-  let remove_info id = Hashtbl.remove info.info_lvars id in
+  let remove_info_lvar id = Hashtbl.remove info.info_lvars id in
   (* let remove_local_args args = List.iter remove_info args in *)
   let mk_app e1 args =
     let find_builtin id = Hashtbl.find info.info_gvars id in
@@ -333,11 +346,18 @@ and expression info expr =
   | Pexp_construct (c,o) -> construct info (c,o)
   | Pexp_ident t -> Var (longident info t.txt)
   | Pexp_fun (Nolabel, None, pat, expr) ->
-      let id = name_of_pat pat in
-      add_info id;
-      let expr = expression info expr in
-      remove_info id;
-      Rec (BAnon, BNamed id, expr)
+     let id = name_of_pat pat in
+     begin
+       match id with
+       | "<>" ->
+          let expr = expression info expr in
+          Rec (BAnon, BAnon, expr)
+       | _ ->
+          add_info_lvar id;
+          let expr = expression info expr in
+          remove_info_lvar id;
+          Rec (BAnon, BNamed id, expr)
+     end
   | Pexp_fun _ ->
       assert false (* TODO *)
   | Pexp_apply (f, [(_, e)]) when is_fst f ->
@@ -440,16 +460,16 @@ and expression info expr =
      assert false
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
       let id, expr = value_binding info val_bind in
-      add_info id;
+      add_info_lvar id;
       let expr2 = expression info e2 in
-      remove_info id;
+      remove_info_lvar id;
       App (mk_lamb (BNamed id) expr2, expr)
   | Pexp_let (Recursive, [{pvb_pat; _} as val_bind], e2) ->
       let fun_name = name_of_pat pvb_pat in
-      add_info fun_name;
+      add_info_lvar fun_name;
       let _id, expr = value_binding info val_bind in
       let expr2 = expression info e2 in
-      remove_info fun_name;
+      remove_info_lvar fun_name;
       begin
         let arg, body = match expr with
           | Rec (_, b, e) -> b, e
@@ -478,7 +498,12 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
   let get_var_of_pat P.{ppat_desc; _} = match ppat_desc with
     | Ppat_var {txt; _} -> txt
     | _ -> assert false in
-  let add_info id = Hashtbl.add info.info_lvars id () in
+  let add_info_lvar id = Hashtbl.add info.info_lvars id () in
+  (* let add_info_lvar id =
+   *   begin match Hashtbl.find_opt info.info_known id with
+   *   | None (\* | Some BNone *\) -> Hashtbl.add info.info_lvars id ()
+   *   | _ -> Format.eprintf "The keyword %s is reserved.\n" id; assert false
+   *   end in *)
   let pat_desc P.{ppat_desc; _} = match ppat_desc with
     | P.Ppat_any -> assert false (* TODO *)
     | Ppat_var _ ->
@@ -489,14 +514,14 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
         "InjL", BAnon
     | Ppat_construct ({txt = Lident "InjL"; _}, Some p) ->
         let v = get_var_of_pat p in
-        add_info v;
+        add_info_lvar v;
         "InjL", BNamed v
     | Ppat_construct ({txt = Lident "InjR"; _}, Some p) ->
         let v = get_var_of_pat p in
-        add_info v;
+        add_info_lvar v;
         "InjR", BNamed v
     | Ppat_construct ({txt = Lident p; _}, Some {ppat_desc = Ppat_var s; _}) ->
-        add_info s.txt;
+        add_info_lvar s.txt;
         p, BNamed s.txt
     | _ -> assert false (* TODO *) in
   let txt, binder = pat_desc pc_lhs in
@@ -506,7 +531,7 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
 and constant = function
     Pconst_integer (t, _) -> LitInt (int_of_string t)
   | Pconst_string (s, _, _) -> LitString s
-  | Pconst_char _ ->  assert false (* not implemented in AnerisLang *)
+  | Pconst_char c -> LitString (Char.escaped c)
   | Pconst_float _ -> assert false (* not implemented in AnerisLang *)
 
 and construct info = function

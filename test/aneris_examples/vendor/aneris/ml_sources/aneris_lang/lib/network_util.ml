@@ -18,10 +18,6 @@ let wait_receivefrom =
      if test msg then msg else loop () in
   loop ()
 
-let sendto_all =
-  fun socket ns msg ->
-  list_iter (fun n -> let _l = sendTo socket msg n in ()) ns
-
 let sendto_all_set =
   fun socket x msg ->
   set_iter (fun n -> let _l = sendTo socket msg n in ()) x

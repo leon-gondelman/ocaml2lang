@@ -7,9 +7,10 @@ IMPORT_PATH_PREFIX:
 	vendor/aneris/ml_sources aneris
 
 ML_SOURCES:
-	util/util.ml
 	ping_pong/code.ml
+	stenning/code.ml
 	crdt/gcounter/code.ml
+	util/util.ml
 
 ML_DEPENDENCIES:
         util
@@ -17,3 +18,4 @@ ML_DEPENDENCIES:
         crdt/gcounter
 	-V vendor/aneris/ml_sources/aneris_lang/
 	-V vendor/aneris/ml_sources/aneris_lang/lib
+	-V vendor/aneris/ml_sources/aneris_lang/lib/serialization

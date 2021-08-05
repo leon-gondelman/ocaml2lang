@@ -61,7 +61,10 @@ let pp_litv fmt = function
   | LitBool false -> fprintf fmt "#false"
   | LitUnit -> fprintf fmt "#()"
   | LitString s -> fprintf fmt "#\"%s\"" s
-  | _ -> assert false (* TODO *)
+  | LitAddressFamily PF_INET ->  fprintf fmt "#PF_INET"
+  | LitSocketType SOCK_DGRAM ->  fprintf fmt "#SOCK_DGRAM"
+  | LitProtocol IPPROTO_UDP ->  fprintf fmt "#IPPROTO_UDP"
+
 
 let rec pp_val ?(paren=false) fmt = function
   | LitV bl -> fprintf fmt "%a" pp_litv bl
@@ -105,7 +108,7 @@ and pp_expr ?(paren=false) fmt = function
      let app = list_of_app a in pp_app paren fmt app
   (* Sequence *)
   | App (Rec (BAnon, BAnon, e2), e1) ->
-      fprintf fmt (protect_on paren "@[<hov>%a ;;@ %a@]")
+      fprintf fmt (protect_on paren "@[<v>%a;;@ %a@]")
         (pp_expr ~paren:false) e1 (pp_expr ~paren:false) e2
   (* Let binding *)
   | App (Rec (BAnon, x, e2), e1) ->
@@ -117,7 +120,8 @@ and pp_expr ?(paren=false) fmt = function
      let args, body = retrieve e2 in
      let args = x :: args in
      fprintf fmt
-       (protect_on paren "@[<v>letrec: \"%s\" @[%a@] := %a in@ %a@]") f
+       (protect_on paren "@[<v 2>letrec: %a @[%a@] :=@ @[%a@] in@ %a@]")
+       pp_binder (BNamed f)
        (pp_print_list ~pp_sep:pp_space pp_binder) args
        (pp_expr ~paren) body (pp_expr ~paren) e1
   | App _ as a -> let app = list_of_app a in
@@ -155,7 +159,7 @@ and pp_expr ?(paren=false) fmt = function
      pp_binop op
   | If (e1, e2, e3) ->
       fprintf fmt (protect_on paren
-                     "(if: %a@\n@[<hov 2>then@ %a@]@\nelse @[<hov>%a@])")
+                     "(if: %a@\n@[<hov 2> then@  %a@]@\n@[<hov 2> else@  %a@])")
        (pp_expr ~paren) e1
        (pp_expr ~paren) e2
        (pp_expr ~paren) e3
@@ -221,7 +225,7 @@ and pp_expr ?(paren=false) fmt = function
   | ESome e ->
       fprintf fmt (protect_on paren "SOME %a") (pp_expr ~paren:true) e
   | Eassert e ->
-      fprintf fmt (protect_on paren "assert: %a") (pp_expr ~paren:true) e
+      fprintf fmt (protect_on paren "assert %a") (pp_expr ~paren:true) e
   | ENewLock e ->
       fprintf fmt (protect_on paren "newlock %a") (pp_expr ~paren:true) e
   | ETryAcquire e ->
