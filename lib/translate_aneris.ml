@@ -525,7 +525,7 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
     | _ -> Format.eprintf
              "\nIn file %s at line %d:\n  The keyword %s is reserved.\n"
              info.info_fname loc.loc_start.pos_lnum id;
-           assert false
+           exit 1
     end in
   let pat_desc P.{ppat_desc; _} = match ppat_desc with
     | P.Ppat_any -> assert false (* TODO *)
@@ -587,9 +587,11 @@ and construct info = function
      Val (LitV (LitSocketType SOCK_DGRAM))
   | ({txt = Lident "IPPROTO_UDP"; _}, None) ->
      Val (LitV (LitProtocol IPPROTO_UDP))
-  | ({txt = Lident s; _}, _) ->
-      Format.eprintf "s:%s@." s;
-      assert false (* TODO *)
+  | ({txt = Lident s; loc = loc},_) ->
+     Format.eprintf
+       "\nIn file %s at line %d:\n  The value '%s' is currently not supported.\n"
+       info.info_fname loc.loc_start.pos_lnum s;
+     exit 1
   | _ -> assert false (*TODO : socket address, socket handle? *)
 
 and program nms fname =
