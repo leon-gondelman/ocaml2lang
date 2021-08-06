@@ -88,6 +88,10 @@ and value =
 
 type decl = string * expr
 
+type notation = string
+
+type program_item = Decl of decl | Notation of notation
+
 type builtin =
   | BNone
   | BBuiltin of string
@@ -100,7 +104,7 @@ type path = string
 
 type aneris_program = {
   prog_env    : env;
-  prog_body   : decl list;
+  prog_body   : program_item list;
   prog_known  : known_map;
   prog_builtin: bool;
 }

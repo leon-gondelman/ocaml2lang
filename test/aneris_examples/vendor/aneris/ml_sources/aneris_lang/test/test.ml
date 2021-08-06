@@ -1,8 +1,8 @@
-open Network
-open Lang
-open Notation
-open List
-open Set
+open! Network
+open! Lang
+open! Notation
+open! List
+open! Set
 
 let p1 = (1,(2,(3,4)))
 let p2 = (((1,2),3),4)

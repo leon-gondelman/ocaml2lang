@@ -89,6 +89,9 @@ and value =
   | NoneV
 
 type decl = string * expr
+type notation = string
+
+type program_item = Decl of decl | Notation of notation
 
 type builtin =
   | BNone
@@ -102,7 +105,7 @@ type path = string
 
 type aneris_program = {
   prog_env    : env;
-  prog_body   : decl list;
+  prog_body   : program_item list;
   prog_known  : known_map;
   prog_builtin: bool;
 }
@@ -123,4 +126,4 @@ type 'a pp = Format.formatter -> 'a -> unit
  *   Format.formatter -> env -> unit *)
 
 val mk_aneris_program :
-  env -> decl list -> known_map -> bool -> aneris_program
+  env -> program_item list -> known_map -> bool -> aneris_program

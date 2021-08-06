@@ -1,6 +1,6 @@
-open Network
-open Lang
-open Notation
+open! Network
+open! Lang
+open! Notation
 open List
 open Set
 
@@ -9,7 +9,7 @@ let unSOME o = match o with
   | Some x -> x
 
 let sendto_all skt ns msg =
-  list_iter (fun n -> sendTo skt msg n) ns
+  list_iter (fun n -> ignore(sendTo skt msg n)) ns
 
 let rec listen skt handler =
   match receiveFrom skt with

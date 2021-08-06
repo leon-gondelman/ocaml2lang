@@ -10,6 +10,7 @@ ML_SOURCES:
 	aneris_lang/lib/network_util.ml
 	aneris_lang/lib/list.ml
 	aneris_lang/lib/set.ml
+	aneris_lang/lib/map.ml
 	aneris_lang/lib/serialization/serialization_base.ml
 	aneris_lang/test/test.ml
 

@@ -48,6 +48,7 @@ let pp_binder fmt = function
   | BNamed x -> fprintf fmt "\"%s\"" x
 
 let rec pp_gvar fmt = function
+  | Gvar "list_nil" | Gvar "list_nilV" -> fprintf fmt "[]"
   | Gvar s -> fprintf fmt "%s" s
   | Gdot (v, s) -> fprintf fmt "%a.%s" pp_gvar v s
 
@@ -104,6 +105,10 @@ and pp_expr ?(paren=false) fmt = function
   | Var v -> pp_var fmt v
   | Rec (f, x, e) ->
      pp_rec fmt paren f x e
+  (* List cons *)
+  | App (App (Var (Vgvar (Gvar "list_cons")), e1), e2) ->
+     fprintf fmt (protect_on paren "@[<hov>%a :: %a@]")
+       (pp_expr ~paren) e1 (pp_expr ~paren) e2
   | App (App _, _) as a ->
      let app = list_of_app a in pp_app paren fmt app
   (* Sequence *)
@@ -221,7 +226,7 @@ and pp_expr ?(paren=false) fmt = function
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
         (pp_expr ~paren:true) e3
   | ENone ->
-      fprintf fmt "NONEV"
+      fprintf fmt "NONE"
   | ESome e ->
       fprintf fmt (protect_on paren "SOME %a") (pp_expr ~paren:true) e
   | Eassert e ->
@@ -271,7 +276,13 @@ let pp_decl fmt (id, expr) =
   | _     -> pp_decl_lang_expr fmt (id, expr)
 
 let pp_program fmt p =
-  fprintf fmt "@[%a@]@." (pp_print_list ~pp_sep:pp_newline2 pp_decl) p
+  let pp_program_item fmt pi =
+    match pi with
+    | Decl p -> pp_decl fmt p
+    | Notation s ->
+       fprintf fmt "@[<v>@[%s@]" s in
+  fprintf fmt "@[%a@]@."
+    (pp_print_list ~pp_sep:pp_newline2 pp_program_item) p
 
 let pp_builtin fmt = function
   | BNone -> ()

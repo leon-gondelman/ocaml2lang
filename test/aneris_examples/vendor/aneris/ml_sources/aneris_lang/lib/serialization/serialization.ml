@@ -1,6 +1,6 @@
 open Lang
 open List
-open Network_Util
+open Network_util
 
 type 'a serialization =
   { dbs_ser : 'a -> string;
@@ -91,7 +91,7 @@ let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
  let sum_serialization
        (sA[@Gvar] : 'a serialization)
        (sB[@Gvar] : 'b serialization)
-     : ('a, 'b) sumTy) serialization =
+     : ('a, 'b) sumTy serialization =
    { dbs_ser   = sum_ser sA.dbs_ser sB.dbs_ser ;
      dbs_deser = sum_deser sA.dbs_deser sB.dbs_deser }
 
@@ -108,11 +108,11 @@ let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
  let list_ser (ser[@Gvar])  =
    let rec list_ser v =
      match v with
-       SOME a ->
+       Some a ->
         let hd = ser (fst a) in
         let tl = list_ser (snd a) in
         (i2s (strlen hd)) ^ "_" ^ hd ^ tl
-     | NONE -> ""
+     | None -> ""
    in list_ser
 
  let list_deser (deser[@Gvar]) =
@@ -126,10 +126,10 @@ let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
         let hd  = deser h in
         let tail = list_deser t in
         list_cons hd tail
-     | None -> NONE
+     | None -> None
    in list_deser
 
  let list_serialization
-       (s[@Gvar] : 'a serialization) : ('a 'alist) serialization =
-  { dbs_ser   = list_ser ser.dbs_ser ;
-    dbs_deser = list_deser ser.dbs_deser }
+       (s[@Gvar] : 'a serialization) : 'a alist serialization =
+  { dbs_ser   = list_ser s.dbs_ser ;
+    dbs_deser = list_deser s.dbs_deser }

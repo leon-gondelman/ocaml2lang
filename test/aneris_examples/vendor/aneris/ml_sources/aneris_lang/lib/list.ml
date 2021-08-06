@@ -1,17 +1,21 @@
-open Lang
+open! Lang
 
 type 'a alist = ('a * 'a alist) option
 
-let list_nil = None
-let list_nilV = None
+let[@notation
+  "Notation \"[ ]\" := (list_nil) (format \"[ ]\") : expr_scope."]
+  list_nil = None
+let[@notation
+  "Notation \"[ ]\" := (list_nilV) (format \"[ ]\") : val_scope."]
+  list_nilV = None
 
-let list_cons =
- fun elem list -> Some (elem, list)
+let[@notation
+  "Infix \"::\" := list_cons (at level 60, right associativity) : expr_scope."] list_cons elem list = Some (elem, list)
 
-let list_head =
- fun l -> match l with
-            Some a -> Some (fst a)
-          | None -> None
+let list_head l =
+  match l with
+    Some a -> Some (fst a)
+  | None -> None
 
 let list_tail =
  fun l -> match l with
@@ -36,8 +40,6 @@ let rec list_iter =
      list_iter handler tail
   | None -> ()
 
-
-
 let rec list_length =
   fun l ->
   match l with
@@ -48,8 +50,8 @@ let rec list_nth =
   fun l i ->
      match l with
        Some a ->
-       if true then Some (fst a)
-       else list_nth (snd a) (i + 1)
+       if i = 0 then Some (fst a)
+       else list_nth (snd a) (i - 1)
      | None -> None
 
 

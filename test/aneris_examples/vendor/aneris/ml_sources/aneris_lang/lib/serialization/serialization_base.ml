@@ -1,5 +1,5 @@
 open Lang
-open Notation
+open! Notation
 
 let tag_of_message msg =
   match findFrom msg 0 '_' with

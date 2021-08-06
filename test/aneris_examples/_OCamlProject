@@ -8,7 +8,7 @@ IMPORT_PATH_PREFIX:
 
 ML_SOURCES:
 	ping_pong/code.ml
-	stenning/code.ml
+	stenning/stenning_code.ml
 	crdt/gcounter/code.ml
 	util/util.ml
 
