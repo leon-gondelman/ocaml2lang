@@ -272,7 +272,7 @@ let pp_decl_lang_val fmt (id, expr) =
 
 let pp_decl fmt (id, expr) =
   match expr with
-  | Val _ | ENone | Rec _ -> pp_decl_lang_val fmt (id, expr)
+  | Val _ | Rec _ | Var _ -> pp_decl_lang_val fmt (id, expr)
   | _     -> pp_decl_lang_expr fmt (id, expr)
 
 let pp_program fmt p =

@@ -90,29 +90,6 @@ let is_val = function
   | Val _ -> true
   | _ -> false
 
-let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
-  let is_builtin P.{attr_name = {txt; _}; _} =
-    txt = "builtin" || txt = "UnOp"  in
-  let get_payload payload = match payload with
-    | P.PStr
-      [{ pstr_desc =
-           Pstr_eval
-             ({ pexp_desc =
-                  Pexp_constant (Pconst_string (spec, _)); _ }, _);
-         _ };] -> spec
-    | _ -> assert false in
-  let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
-    | "builtin" -> BBuiltin (get_payload attr_payload)
-    | "UnOp"    -> BUnOp (get_payload attr_payload)
-    | _         -> BNone in
-  begin try
-      let attr = List.find is_builtin pvb_attributes in
-      let builtin = get_builtin attr in
-      let id = name_of_pat pvb_pat in
-      add_known info id builtin;
-    with Not_found -> () end;
-  []
-
 (* To be completed with all possible builtin translation *)
 let node_from_builtin s args = match s, args with
   | "MakeAddress", [expr1; expr2] ->
@@ -179,86 +156,110 @@ let add_assert info =
                                 if Sys.file_exists fname then (raise (Found k))) nms
   with Found s -> Format.eprintf "Found assert in %s@." s
 
-let ml_decl d = Decl d
-
-let rec structure info str =
-  let body = List.flatten (List.map (structure_item info) str) in
-  let env = List.rev info.info_env in
-  mk_aneris_program env body info.info_known info.info_builtin
-
-and structure_item info str_item =
-  let add_info id b = Hashtbl.add info.info_gvars id b in
-  let add_known id b = Hashtbl.add info.info_known id b in
-  match str_item.P.pstr_desc with
-  | Pstr_value (Nonrecursive, [val_bind]) ->
-     if is_builtin info then
-       value_binding_bultin info val_bind
-     else
+(* Currently not useful in Coq *)
+let rec normalize_expr e0 = match e0 with
+    | ENone -> Val NoneV
+    | InjL (Val v) -> Val (InjLV v)
+    | InjR (Val v) -> Val (InjRV v)
+    | ESome (Val v) -> Val (SomeV v)
+    | Pair (Val v1, Val v2) -> Val (PairV (v1, v2))
+    | InjL e ->
        begin
-         match value_binding info val_bind with
-         | [Decl (id, _)] as pi ->
-            add_info id BNone;
-            add_known id BNone;
-            pi
-         | [Decl (id, _); Notation _] as pi ->
-            add_info id BNone;
-            add_known id BNone;
-            pi
-         | _ -> assert false
+         match normalize_expr e with
+         | Val v -> Val (InjLV v)
+         | en -> InjL en
        end
-  | Pstr_value (Recursive, [val_bind]) ->
-     if is_builtin info then
-       value_binding_bultin info val_bind
-     else
+    | InjR e ->
        begin
-         match value_binding info val_bind with
-         | [Decl (id, expr)] ->
-            let arg, body = match expr with
-              | Rec (_, b, e) -> b, e
-              | _ -> assert false in
-            add_info id BNone;
-            add_known id BNone;
-            [ml_decl (id, Rec (BNamed id, arg, body))]
-         |  [Decl (id, expr); Notation s]  ->
-             let arg, body = match expr with
-               | Rec (_, b, e) -> b, e
-               | _ -> assert false in
-             add_info id BNone;
-             add_known id BNone;
-             [ml_decl (id, Rec (BNamed id, arg, body)); Notation s]
-         | _ -> assert false
+         match normalize_expr e with
+         | Val v -> Val (InjRV v)
+         | en -> InjR en
        end
-  | Pstr_type _ ->
-     []
-  | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
-     let fname = string_of_longident m.txt in
-     if not (is_builtin info) then begin
-         let nms = info.info_nmspace in
-         let fname_ml = (String.uncapitalize_ascii fname) ^ ".ml" in
-         let fname_ml, path = find_file_deps info fname_ml in
-         let fname_ml = Filename.concat path fname_ml in
-         let ({prog_known; _} as p) = program nms fname_ml in
-         (* add all known symbols to the gvars tables *)
-         let add_info id b = add_info id b in
-         Hashtbl.iter add_info prog_known;
-         let fname = String.uncapitalize_ascii fname in
-         info.info_env <- add_env info.info_env fname path p
-       end;
-     (* else ...
-              what should we do about [open] inside builtins? *)
-     info.info_deps <- fname :: info.info_deps;
-     []
-  | Pstr_exception te ->
-     if is_builtin info then []
-     else begin
-         Format.eprintf
-           "\nIn file %s at line %d:\n  exceptions are not supported."
-           info.info_fname te.ptyexn_loc.loc_start.pos_lnum;
-         exit 1
+    | ESome e ->
+       begin match normalize_expr e with
+       | Val v -> Val (SomeV v)
+       | en -> ESome en
        end
-  | _ -> assert false (* TODO *)
+    | Pair (e1, e2) ->
+       begin match normalize_expr e1, normalize_expr e2 with
+       | Val v1, Val v2 -> Val (PairV (v1, v2))
+       | en1, en2 -> Pair (en1, en2)
+       end
+    | Rec (b1, b2, e) ->
+       Rec (b1, b2, normalize_expr e)
+    | App (e1, e2) ->
+       App (normalize_expr e1, normalize_expr e2)
+    | UnOp (uop, e1) ->
+       UnOp (uop, normalize_expr e1)
+    | BinOp (bop, e1, e2) ->
+       BinOp (bop, normalize_expr e1, normalize_expr e2)
+    | If (e1, e2, e3) ->
+       If (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | FindFrom (e1, e2, e3) ->
+       FindFrom (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | Substring (e1, e2, e3) ->
+       Substring (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | Fst e -> Fst (normalize_expr e)
+    | Snd e -> Snd (normalize_expr e)
+    | Case (e, (s1, e1), (s2, e2)) ->
+       Case (normalize_expr e, (s1, normalize_expr e1), (s2, normalize_expr e2))
+    | Fork e ->
+       Fork (normalize_expr e)
+    | Alloc (so, e) ->
+       Alloc (so, normalize_expr e)
+    | Load e ->
+       Load (normalize_expr e)
+    | Store (e1, e2)  ->
+       Store (normalize_expr e1, normalize_expr e2)
+    | MakeAddress (e1, e2)  ->
+       MakeAddress (normalize_expr e1, normalize_expr e2)
+    | NewSocket (e1, e2, e3) ->
+       NewSocket (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | SocketBind  (e1, e2) ->
+       SocketBind (normalize_expr e1, normalize_expr e2)
+    | SendTo (e1, e2, e3) ->
+       SendTo (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | ReceiveFrom e ->
+       ReceiveFrom (normalize_expr e)
+    | Eassert e ->
+       Eassert (normalize_expr e)
+    | ENewLock e ->
+       ENewLock (normalize_expr e)
+    | ETryAcquire e ->
+       ETryAcquire (normalize_expr e)
+    | EAcquire e ->
+       EAcquire (normalize_expr e)
+    | ERelease e ->
+       ERelease (normalize_expr e)
+    | SetReceiveTimeout (e1, e2, e3) ->
+       SetReceiveTimeout (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | Var _ | Val _ | CAS _  | Start _ -> e0
 
-and value_binding info {pvb_pat; pvb_expr; pvb_attributes; pvb_loc; } =
+
+let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
+  let is_builtin P.{attr_name = {txt; _}; _} =
+    txt = "builtin" || txt = "UnOp"  in (* todo: add notations in builtin files *)
+  let get_payload payload = match payload with
+    | P.PStr
+      [{ pstr_desc =
+           Pstr_eval
+             ({ pexp_desc =
+                  Pexp_constant (Pconst_string (spec, _)); _ }, _);
+         _ };] -> spec
+    | _ -> assert false in
+  let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
+    | "builtin" -> BBuiltin (get_payload attr_payload)
+    | "UnOp"    -> BUnOp (get_payload attr_payload)
+    | _         -> BNone in
+  begin try
+      let attr = List.find is_builtin pvb_attributes in
+      let builtin = get_builtin attr in
+      let id = name_of_pat pvb_pat in
+      add_known info id builtin;
+    with Not_found -> () end;
+  []
+
+let rec value_binding (info : info) ({pvb_pat; pvb_expr; pvb_attributes; pvb_loc; }: P.value_binding) =
   let is_builtin P.{attr_name = {txt; _}; _} = txt = "notation" in
   let get_payload payload = match payload with
     | P.PStr
@@ -294,11 +295,9 @@ and value_binding info {pvb_pat; pvb_expr; pvb_attributes; pvb_loc; } =
   let id = name_of_pat pvb_pat in
   add_info_lvar id;
   let expr = expression info pvb_expr in
+  (* let expr = normalize_expr expr in *)
   remove_info_lvar id;
   [Decl (id, expr)] @ nitem
-
-
-
 
 and string_of_longident = function
   | Lapply _ -> assert false (* TODO *)
@@ -626,23 +625,16 @@ and construct info = function
   | ({txt = Lident "false"; loc = _}, None) -> Val (LitV (LitBool false))
   | ({txt = Lident "None"; loc = _}, None) -> ENone
   | ({txt = Lident "Some"; loc = _}, Some expr) ->
-     let e = expression info expr in
-     begin match e with Val v -> Val (SomeV v) | _ -> ESome e end
-  (* | ({txt = Lident "::"; loc = _}, Some e) ->
-   *     begin match e.pexp_desc with
-   *       | Pexp_tuple [e1;e2] ->
-   *           Eapp (mk_gvar "::", [expression info   e1;
-   *                                expression info   e2])
-   *       | _ -> assert false
-   *     end *)
-  (* | ({txt = Lident "[]"; loc = _}, None) ->
-   *     Evalue NONEV *)
+     ESome (expression info expr)
+     (* begin match e with Val v -> Val (SomeV v) | _ -> ESome e end *)
   | ({txt = Lident "InjL"; _}, Some expr) ->
-     let e = expression info expr in
-     begin match e with Val v -> Val (InjLV v) | _ -> InjL e end
+     InjL (expression info expr)
+     (* let e = expression info expr in
+      * begin match e with Val v -> Val (InjLV v) | _ -> InjL e end *)
   | ({txt = Lident "InjR"; _}, Some expr) ->
-     let e = expression info expr in
-     begin match e with Val v -> Val (InjRV v) | _ -> InjR e end
+     InjR (expression info expr)
+     (* let e = expression info expr in
+      * begin match e with Val v -> Val (InjRV v) | _ -> InjR e end *)
   | ({txt = Lident "PF_INET"; _}, None) ->
      Val (LitV (LitAddressFamily PF_INET))
   | ({txt = Lident "SOCK_DGRAM"; _}, None) ->
@@ -655,6 +647,75 @@ and construct info = function
        info.info_fname loc.loc_start.pos_lnum s;
      exit 1
   | _ -> assert false (*TODO : socket address, socket handle? *)
+
+
+let rec structure info str =
+  let body = List.flatten (List.map (structure_item info) str) in
+  let env = List.rev info.info_env in
+  mk_aneris_program env body info.info_known info.info_builtin
+
+and structure_item info str_item =
+  let add_info id b = Hashtbl.add info.info_gvars id b in
+  let add_known id b = Hashtbl.add info.info_known id b in
+  let rec process_value_binding f = function
+    | Decl (id, expr) :: vl ->
+       add_info id BNone;
+       add_known id BNone;
+       (f id expr) :: (process_value_binding f vl)
+    | [Notation s] -> [Notation s]
+    (* currently supporting only one notation per definition *)
+    | [] -> []
+    | _ -> assert false
+  in
+  match str_item.P.pstr_desc with
+  | Pstr_value (Nonrecursive, [val_bind]) ->
+     if is_builtin info then
+       value_binding_bultin info val_bind
+     else
+       process_value_binding
+         (fun id expr -> Decl (id, expr))
+         (value_binding info val_bind)
+  | Pstr_value (Recursive, [val_bind]) ->
+     if is_builtin info then
+       value_binding_bultin info val_bind
+     else
+       process_value_binding
+         (fun id expr ->
+           let arg, body = match expr with
+             | Rec (_, b, e) -> b, e
+             | _ -> assert false in
+           Decl (id, Rec (BNamed id, arg, body)))
+         (value_binding info val_bind)
+  | Pstr_type _ ->
+     []
+  | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
+     let fname = string_of_longident m.txt in
+     if not (is_builtin info) then begin
+         let nms = info.info_nmspace in
+         let fname_ml = (String.uncapitalize_ascii fname) ^ ".ml" in
+         let fname_ml, path = find_file_deps info fname_ml in
+         let fname_ml = Filename.concat path fname_ml in
+         let ({prog_known; _} as p) = program nms fname_ml in
+         (* add all known symbols to the gvars tables *)
+         let add_info id b = add_info id b in
+         Hashtbl.iter add_info prog_known;
+         let fname = String.uncapitalize_ascii fname in
+         info.info_env <- add_env info.info_env fname path p
+       end;
+     (* else ...
+              what should we do about [open] inside builtins? *)
+     info.info_deps <- fname :: info.info_deps;
+     []
+  | Pstr_exception te ->
+     if is_builtin info then []
+     else begin
+         Format.eprintf
+           "\nIn file %s at line %d:\n  exceptions are not supported."
+           info.info_fname te.ptyexn_loc.loc_start.pos_lnum;
+         exit 1
+       end
+  | _ -> assert false (* TODO *)
+
 
 and program nms fname =
   let open Read in

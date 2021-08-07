@@ -2,12 +2,13 @@ open! Lang
 
 type 'a alist = ('a * 'a alist) option
 
+(* let[@notation
+ *   "Notation \"[ ]\" := (list_nil) (format \"[ ]\") : expr_scope."]
+ *   list_nil = None *)
+
 let[@notation
-  "Notation \"[ ]\" := (list_nil) (format \"[ ]\") : expr_scope."]
+  "Notation \"[ ]\" := (list_nil) (format \"[ ]\") : val_scope."]
   list_nil = None
-let[@notation
-  "Notation \"[ ]\" := (list_nilV) (format \"[ ]\") : val_scope."]
-  list_nilV = None
 
 let[@notation
   "Infix \"::\" := list_cons (at level 60, right associativity) : expr_scope."] list_cons elem list = Some (elem, list)
