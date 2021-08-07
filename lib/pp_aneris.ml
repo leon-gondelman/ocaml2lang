@@ -25,6 +25,7 @@ let list_of_app app =
   loop [] app
 
 let pp_space ppf () = Format.fprintf ppf "@ "
+let pp_newline fmt () = fprintf fmt "@\n"
 let pp_newline2 fmt () = fprintf fmt "@\n@\n"
 let pp_comma ppf () = Format.fprintf ppf ",@ "
 
@@ -236,11 +237,16 @@ and pp_expr ?(paren=false) fmt = function
   | ETryAcquire e ->
       fprintf fmt (protect_on paren "try_acquire %a") (pp_expr ~paren:true) e
   | EAcquire e ->
-      fprintf fmt (protect_on paren "acquire %a") (pp_expr ~paren:true) e
+     fprintf fmt (protect_on paren "acquire %a") (pp_expr ~paren:true) e
   | ERelease e ->
-      fprintf fmt (protect_on paren "release %a") (pp_expr ~paren:true) e
-  | CAS  _ -> assert false (* TODO *)
-  | Start  _ -> assert false (* TODO *)
+     fprintf fmt (protect_on paren "release %a") (pp_expr ~paren:true) e
+  | ERecord iel ->
+     let pp_record_field_def fmt (fd, e) =
+       fprintf fmt "@[    %s := %a;@]" fd (pp_expr ~paren:false) e in
+     fprintf fmt "{|@\n%a@\n|}"
+       (pp_print_list ~pp_sep:pp_newline pp_record_field_def) iel
+  | CAS  _ -> assert false
+  | Start  _ -> assert false
 
 and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
   | BAnon, BNamed x ->
@@ -270,9 +276,14 @@ let pp_decl_lang_val fmt (id, expr) =
   fprintf fmt "@[<hov 2>Definition %s : base_lang.val :=@ @[%a@].@]"
     id (pp_expr ~paren:false) expr
 
+let pp_decl_coq_record fmt (id, expr) =
+  fprintf fmt "@[<hov 2>Definition %s :=@ @[%a@].@]"
+    id (pp_expr ~paren:false) expr
+
 let pp_decl fmt (id, expr) =
   match expr with
   | Val _ | Rec _ | Var _ -> pp_decl_lang_val fmt (id, expr)
+  | ERecord _ -> pp_decl_coq_record fmt (id, expr)
   | _     -> pp_decl_lang_expr fmt (id, expr)
 
 let pp_program fmt p =

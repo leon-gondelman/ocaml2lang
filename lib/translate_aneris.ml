@@ -17,7 +17,8 @@ module Read = struct
   type builtin = string list
 
   let builtin =
-    let cin = open_in "_builtin" in (* FIXME: check if _bultin is present *)
+    let cin = open_in "_builtin" in
+    (* FIXME: check if _bultin is present *)
     let l = ref [] in
     try
       while true do
@@ -25,9 +26,10 @@ module Read = struct
         l := line :: !l
       done;
       assert false
-    with End_of_file -> let acc = List.rev !l in
-                        let h = Hashtbl.create 16 in
-                        List.iter (fun s -> Hashtbl.add h s ()) acc;
+    with End_of_file ->
+      let acc = List.rev !l in
+      let h = Hashtbl.create 16 in
+      List.iter (fun s -> Hashtbl.add h s ()) acc;
                         h
 
   let ptree fname =
@@ -232,13 +234,18 @@ let rec normalize_expr e0 = match e0 with
     | ERelease e ->
        ERelease (normalize_expr e)
     | SetReceiveTimeout (e1, e2, e3) ->
-       SetReceiveTimeout (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+       SetReceiveTimeout
+         (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | ERecord iel ->
+       ERecord (List.map (fun (id, e) -> (id, normalize_expr e)) iel)
     | Var _ | Val _ | CAS _  | Start _ -> e0
+
 
 
 let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   let is_builtin P.{attr_name = {txt; _}; _} =
-    txt = "builtin" || txt = "UnOp"  in (* todo: add notations in builtin files *)
+    txt = "builtin" || txt = "UnOp"  in
+  (* todo: add notations in builtin files *)
   let get_payload payload = match payload with
     | P.PStr
       [{ pstr_desc =
@@ -259,7 +266,9 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
     with Not_found -> () end;
   []
 
-let rec value_binding (info : info) ({pvb_pat; pvb_expr; pvb_attributes; pvb_loc; }: P.value_binding) =
+let rec value_binding
+          (info : info)
+          ({pvb_pat; pvb_expr; pvb_attributes; pvb_loc; }: P.value_binding) =
   let is_builtin P.{attr_name = {txt; _}; _} = txt = "notation" in
   let get_payload payload = match payload with
     | P.PStr
@@ -564,8 +573,13 @@ and expression info expr =
   | Pexp_assert e ->
      add_assert info;
      Eassert (expression info e)
-  | Pexp_open _ ->
-     assert false (* TODO *)
+  | Pexp_record (iel , _) ->
+     let mk_field_def (i,e) =
+       match i.txt with
+       | Lident s -> (s, expression info e)
+       | _ -> assert false (* TODO *) in
+     ERecord (List.map mk_field_def iel)
+  | Pexp_open _ ->  assert false (* TODO *)
   | _ -> assert false (* TODO *)
 
 and pattern info P.{pc_lhs; pc_rhs; _} =
@@ -663,11 +677,12 @@ and structure_item info str_item =
        add_known id BNone;
        (f id expr) :: (process_value_binding f vl)
     | [Notation s] -> [Notation s]
-    (* currently supporting only one notation per definition *)
     | [] -> []
+    (* currently supporting only one notation/decl per definition *)
     | _ -> assert false
   in
   match str_item.P.pstr_desc with
+    (* let binding *)
   | Pstr_value (Nonrecursive, [val_bind]) ->
      if is_builtin info then
        value_binding_bultin info val_bind
@@ -675,6 +690,7 @@ and structure_item info str_item =
        process_value_binding
          (fun id expr -> Decl (id, expr))
          (value_binding info val_bind)
+  (* recursive let binding with no mutual recursion *)
   | Pstr_value (Recursive, [val_bind]) ->
      if is_builtin info then
        value_binding_bultin info val_bind
@@ -686,8 +702,6 @@ and structure_item info str_item =
              | _ -> assert false in
            Decl (id, Rec (BNamed id, arg, body)))
          (value_binding info val_bind)
-  | Pstr_type _ ->
-     []
   | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
      let fname = string_of_longident m.txt in
      if not (is_builtin info) then begin
@@ -706,14 +720,29 @@ and structure_item info str_item =
               what should we do about [open] inside builtins? *)
      info.info_deps <- fname :: info.info_deps;
      []
+  (* exceptions are currently not supported *)
   | Pstr_exception te ->
-     if is_builtin info then []
+     if is_builtin info
+     then []
      else begin
          Format.eprintf
            "\nIn file %s at line %d:\n  exceptions are not supported."
            info.info_fname te.ptyexn_loc.loc_start.pos_lnum;
          exit 1
        end
+  (* types are currently not supported *)
+  | Pstr_type _ -> []
+  (*| Pstr_type (_, {ptype_name; _} :: _) ->
+     if is_builtin info
+     then []
+     else
+       begin
+         Format.eprintf
+           "\nIn file %s at line %d:\n \
+            \ type declarations are not supported."
+           info.info_fname ptype_name.loc.loc_start.pos_lnum;
+         exit 1
+       end *)
   | _ -> assert false (* TODO *)
 
 

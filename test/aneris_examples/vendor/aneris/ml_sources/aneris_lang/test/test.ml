@@ -4,6 +4,20 @@ open! Notation
 open! List
 open! Set
 
+type 'a serialization =
+  { dbs_ser : 'a -> string;
+    dbs_deser : string -> 'a}
+
+
+let int_ser _v =  "0"
+
+ let int_deser = s2i
+
+ let int_serialization =
+  { dbs_ser   = int_ser;
+    dbs_deser = int_deser }
+
+(*
 let p1 = (1,(2,(3,4)))
 let p2 = (((1,2),3),4)
 
@@ -18,3 +32,4 @@ let q x y z =
   z
 
 let y x = assert x
+*)

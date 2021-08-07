@@ -61,27 +61,32 @@ type expr =
   | Alloc of string option * expr
   | Load of expr
   | Store of expr * expr
-  | CAS of expr * expr * expr
   | MakeAddress of expr * expr
   | NewSocket of expr * expr * expr
   | SocketBind of expr * expr
   | SendTo of expr * expr * expr
   | ReceiveFrom of expr
   | SetReceiveTimeout of expr * expr * expr
-  | Start of base_lit * expr
+  | Eassert of expr
+  (* Ocaml refinement of InjR e and InL () *)
   | ESome of expr
   | ENone
-  | Eassert of expr
+  (* non primitive Aneris constructions translated by name only *)
   | ENewLock of expr
   | ETryAcquire of expr
   | EAcquire of expr
   | ERelease of expr
+  (* Aneris expressions without correspondance in OCaml *)
+  | Start of base_lit * expr
+  | CAS of expr * expr * expr
+  (* Ocaml records to be translated to Coq records *)
+  | ERecord of (ident * expr) list
 
-and branch = string * expr
+and branch = ident * expr
 
 and value =
   | LitV of base_lit
-  (* | RecV (f x : binder) (e : expr) *)
+  (* | RecV (f x : binder) (e : expr) TODO *)
   | PairV of value * value
   | InjLV of value
   | InjRV of value
