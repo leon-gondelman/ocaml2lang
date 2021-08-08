@@ -81,6 +81,7 @@ type expr =
   | CAS of expr * expr * expr
   (* Ocaml records to be translated to Coq records *)
   | ERecord of (ident * expr) list
+  | EField of (ident * ident)
 
 and branch = ident * expr
 
@@ -93,7 +94,9 @@ and value =
   | SomeV of value
   | NoneV
 
-type decl = string * expr
+(* name * coq parameters * anerislang expression *)
+type decl = ident * (ident list) * expr
+
 type notation = string
 
 type program_item = Decl of decl | Notation of notation
@@ -106,12 +109,15 @@ type builtin =
 
 type known_map = (string, builtin) Hashtbl.t
 
+type known_fields
+
 type path = string
 
 type aneris_program = {
   prog_env    : env;
   prog_body   : program_item list;
   prog_known  : known_map;
+  prog_fields : known_fields ref;
   prog_builtin: bool;
 }
 
@@ -125,10 +131,27 @@ val iter_env : ((string * string * aneris_program) -> unit) -> env -> unit
 
 val add_env : env -> string -> string -> aneris_program -> env
 
+val mk_fields : unit -> known_fields
+
+val add_fields : string list -> known_fields -> known_fields
+
+val join_fields : known_fields -> known_fields -> known_fields
+
+exception FieldsAlreadyExist
+
+val get_all_fields : known_fields -> string list list
+
+val mem_fields : string list -> known_fields -> bool
+
 type 'a pp = Format.formatter -> 'a -> unit
 
 (* val pp_env : pp_sep:(unit pp) -> pp_elts:(string pp) ->
  *   Format.formatter -> env -> unit *)
 
 val mk_aneris_program :
-  env -> program_item list -> known_map -> bool -> aneris_program
+  env ->
+  program_item list ->
+  known_map ->
+  known_fields ref ->
+  bool ->
+  aneris_program

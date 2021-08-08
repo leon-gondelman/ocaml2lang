@@ -15,6 +15,7 @@ ML_SOURCES:
 	aneris_lang/lib/nodup.ml
 	aneris_lang/lib/coin_flip.ml
 	aneris_lang/lib/serialization/serialization_base.ml
+	aneris_lang/lib/serialization/serialization.ml
 	aneris_lang/lib/vector_clock/vector_clock.ml
 	aneris_lang/test/test.ml
 

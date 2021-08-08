@@ -24,10 +24,17 @@ let list_of_app app =
     | e -> e :: acc in
   loop [] app
 
-let pp_space ppf () = Format.fprintf ppf "@ "
+let pp_space ppf () = fprintf ppf "@ "
 let pp_newline fmt () = fprintf fmt "@\n"
 let pp_newline2 fmt () = fprintf fmt "@\n@\n"
-let pp_comma ppf () = Format.fprintf ppf ",@ "
+let pp_comma ppf () = fprintf ppf ",@ "
+let rec pp_print_list_last_space ?(pp_sep = pp_print_cut) pp_v ppf = function
+  | [] -> ()
+  | v :: vs ->
+    pp_v ppf v;
+    pp_sep ppf ();
+    pp_print_list_last_space ~pp_sep pp_v ppf vs
+
 
 let protect_on b s =
   if b then "@[<1>(" ^^ s ^^ ")@]"
@@ -231,7 +238,7 @@ and pp_expr ?(paren=false) fmt = function
   | ESome e ->
       fprintf fmt (protect_on paren "SOME %a") (pp_expr ~paren:true) e
   | Eassert e ->
-      fprintf fmt (protect_on paren "assert %a") (pp_expr ~paren:true) e
+      fprintf fmt (protect_on paren "assert: %a") (pp_expr ~paren:true) e
   | ENewLock e ->
       fprintf fmt (protect_on paren "newlock %a") (pp_expr ~paren:true) e
   | ETryAcquire e ->
@@ -245,6 +252,8 @@ and pp_expr ?(paren=false) fmt = function
        fprintf fmt "@[    %s := %a;@]" fd (pp_expr ~paren:false) e in
      fprintf fmt "{|@\n%a@\n|}"
        (pp_print_list ~pp_sep:pp_newline pp_record_field_def) iel
+  | EField (r, f) ->
+     fprintf fmt "%s.(%s)" r f
   | CAS  _ -> assert false
   | Start  _ -> assert false
 
@@ -268,28 +277,36 @@ and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
         | _ -> assert false end
   | _ -> assert false (* TODO *)
 
-let pp_decl_lang_expr fmt (id, expr) =
-  fprintf fmt "@[<hov 2>Definition %s : base_lang.expr :=@ @[%a@].@]"
-    id (pp_expr ~paren:false) expr
+(* NB: currently cannot distinguish between expr and coq record, since
+   no type info is available from ppx *)
+let pp_decl_lang_other fmt (id, mvars, expr) =
+  fprintf fmt "@[<hov 2>Definition %s @[%a@] :=@ @[%a@].@]"
+    id
+    (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
+    (pp_expr ~paren:false) expr
 
-let pp_decl_lang_val fmt (id, expr) =
-  fprintf fmt "@[<hov 2>Definition %s : base_lang.val :=@ @[%a@].@]"
-    id (pp_expr ~paren:false) expr
+let pp_decl_lang_val fmt (id, mvars, expr) =
+  fprintf fmt "@[<hov 2>Definition %s @[%a@]: base_lang.val :=@ @[%a@].@]"
+    id
+    (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
+    (pp_expr ~paren:false) expr
 
-let pp_decl_coq_record fmt (id, expr) =
-  fprintf fmt "@[<hov 2>Definition %s :=@ @[%a@].@]"
-    id (pp_expr ~paren:false) expr
+let pp_decl_coq_record fmt (id, mvars, expr) =
+  fprintf fmt "@[<hov 2>Definition %s @[%a@]:=@ @[%a@].@]"
+    id
+    (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
+    (pp_expr ~paren:false) expr
 
-let pp_decl fmt (id, expr) =
+let pp_decl fmt (id, mvars, expr) =
   match expr with
-  | Val _ | Rec _ | Var _ -> pp_decl_lang_val fmt (id, expr)
-  | ERecord _ -> pp_decl_coq_record fmt (id, expr)
-  | _     -> pp_decl_lang_expr fmt (id, expr)
+  | Val _ | Rec _ | Var _ -> pp_decl_lang_val fmt (id, mvars, expr)
+  | ERecord _ -> pp_decl_coq_record fmt (id, mvars, expr)
+  | _     -> pp_decl_lang_other fmt (id, mvars, expr)
 
 let pp_program fmt p =
   let pp_program_item fmt pi =
     match pi with
-    | Decl p -> pp_decl fmt p
+    | Decl (id, mvars, expr) -> pp_decl fmt (id, mvars, expr)
     | Notation s ->
        fprintf fmt "@[<v>@[%s@]" s in
   fprintf fmt "@[%a@]@."

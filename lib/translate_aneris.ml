@@ -6,9 +6,9 @@ module P = Parsetree
 module Read = struct
 
   type structure = {
-      str_builtin: bool;
-      str_program: P.structure;
-      str_fname : string;
+      str_builtin: bool;        (* generate file iff str_builtin = false *)
+      str_program: P.structure; (* AST of OCaml program  *)
+      str_fname : string;       (* full name of the source file  *)
     }
 
   let mk_structure ?(str_builtin=false) str_program str_fname =
@@ -16,6 +16,8 @@ module Read = struct
 
   type builtin = string list
 
+  (* Collects from _builtin file the names of source files that should
+     not be generated. *)
   let builtin =
     let cin = open_in "_builtin" in
     (* FIXME: check if _bultin is present *)
@@ -29,9 +31,9 @@ module Read = struct
     with End_of_file ->
       let acc = List.rev !l in
       let h = Hashtbl.create 16 in
-      List.iter (fun s -> Hashtbl.add h s ()) acc;
-                        h
+      List.iter (fun s -> Hashtbl.add h s ()) acc; h
 
+  (* Constructs the AST of OCaml source file *)
   let ptree fname =
     let cin = open_in fname in
     let lb = Lexing.from_channel cin in
@@ -43,22 +45,26 @@ end
 
 open Ast
 
+module StringSet = Set.Make(String)
+module StringSetSet = Set.Make(StringSet)
+
 type info = { (* auxiliary information needed for translation, such as
                  free variables, local variables, paths, etc. *)
     info_lvars   : (ident, unit) Hashtbl.t;
     info_gvars   : (ident, builtin) Hashtbl.t;
+    info_rvars   : known_fields ref;
     info_builtin : bool;
     info_known   : (string, builtin) Hashtbl.t;
     info_nmspace : (string, unit) Hashtbl.t;
     info_fname   : string;
     mutable info_deps   : string list;
     mutable info_env    : env;
-    (* TODO: dependencies, in particular for [assert] *)
   }
 
 let create_info info_builtin fname = {
     info_lvars = Hashtbl.create 16;
     info_gvars = Hashtbl.create 16;
+    info_rvars = ref (mk_fields ());
     info_builtin;
     info_known = Hashtbl.create 16;
     info_nmspace = Hashtbl.create 16;
@@ -70,27 +76,45 @@ let create_info info_builtin fname = {
 let add_known info id builtin =
   Hashtbl.add info.info_known id builtin
 
+let is_builtin info = info.info_builtin
+
+(* let mk_bultin env known fields =
+ *   mk_aneris_program env [] known fields *)
+
+(* let return_builtin info l =
+ *   if is_builtin info then l else [] *)
+
 let mk_lamb binder expr =
   Rec (BAnon, binder, expr)
 
-let rec name_of_pat pat = match pat.P.ppat_desc with
-  | Ppat_any -> assert false
+(* Extracts ident from OCaml patterns (fun names, formal args, etc) *)
+let rec name_of_pat info pat = match pat.P.ppat_desc with
   | Ppat_var s -> s.txt
-  | Ppat_constraint (p, _) -> name_of_pat p
+  | Ppat_constraint (p, _) -> name_of_pat info p
   | Ppat_construct ({txt = Lident "()"; _}, _) -> "<>"
-  | _ -> assert false (* TODO *)
+  | _ ->
+      Format.eprintf
+             "\nIn file %s at line %d:\n  this pattern\
+              \ is not supported.\n"
+             info.info_fname pat.ppat_loc.loc_start.pos_lnum;
+           exit 1
 
-let is_builtin info = info.info_builtin
+let rec attrs_of_pat info pat = match pat.P.ppat_desc with
+  | Ppat_var _ ->   pat.P.ppat_attributes
+  | Ppat_constraint (p, _) -> attrs_of_pat info p
+  | _ -> []
 
-let mk_bultin env known =
-  mk_aneris_program env [] known
 
-let return_builtin info l =
-  if is_builtin info then l else []
+let add_info_lvar info id loc =
+    begin match Hashtbl.find_opt info.info_gvars id with
+    | None -> Hashtbl.add info.info_lvars id ()
+    | _ -> Format.eprintf
+             "\nIn file %s at line %d:\n  The keyword %s is reserved. (lvar error)\n"
+             info.info_fname loc.loc_start.pos_lnum id;
+           exit 1
+    end
 
-let is_val = function
-  | Val _ -> true
-  | _ -> false
+let remove_info_lvar info id = Hashtbl.remove info.info_lvars id
 
 (* To be completed with all possible builtin translation *)
 let node_from_builtin s args = match s, args with
@@ -238,9 +262,15 @@ let rec normalize_expr e0 = match e0 with
          (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | ERecord iel ->
        ERecord (List.map (fun (id, e) -> (id, normalize_expr e)) iel)
-    | Var _ | Val _ | CAS _  | Start _ -> e0
+    | Var _ | Val _ | CAS _  | Start _ | EField _ -> e0
 
-
+let pp_comma ppf () = Format.fprintf ppf ", "
+let pp_list_list fmt ll =
+  let pp_list fmt l =
+    Format.fprintf fmt "{%a}"
+      (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string) l in
+  Format.fprintf fmt "{%a}"
+    (Format.pp_print_list ~pp_sep:pp_comma pp_list) ll
 
 let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   let is_builtin P.{attr_name = {txt; _}; _} =
@@ -261,15 +291,56 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   begin try
       let attr = List.find is_builtin pvb_attributes in
       let builtin = get_builtin attr in
-      let id = name_of_pat pvb_pat in
+      let id = name_of_pat info pvb_pat in
       add_known info id builtin;
     with Not_found -> () end;
   []
 
-let rec value_binding
+
+
+
+let is_metavar info P.{attr_name = {txt; _}; attr_loc; _} =
+  if txt = "metavar" then true
+  else
+    begin
+      Format.eprintf
+        "\nIn file %s at line %d:\n  Attribute '%s' is not supported.\n"
+        info.info_fname attr_loc.loc_start.pos_lnum txt;
+      exit 1
+    end
+
+let rec sanity_check_params info expr =
+  match expr.P.pexp_desc with
+  | Pexp_fun (Nolabel, None, pat, body) ->
+     let attrs = attrs_of_pat info pat in
+     if not (List.exists (is_metavar info) attrs)
+     then sanity_check_params info body
+     else
+       begin
+         Format.eprintf
+           "\nIn file %s at line %d:\n meta-vars are not allowed after local vars.\n"
+           info.info_fname pat.ppat_loc.loc_start.pos_lnum;
+         exit 1
+       end
+  | _ -> ()
+
+let rec split_coqparams info (acc : ident list) expr =
+    match expr.P.pexp_desc with
+  | Pexp_fun (Nolabel, None, pat, body) ->
+     let pname = name_of_pat info pat in
+     let attrs = attrs_of_pat info pat in
+     if List.exists (is_metavar info) attrs
+     then split_coqparams info (pname :: acc) body
+     else
+       begin sanity_check_params info expr; (List.rev acc, expr) end
+  | _ ->
+     begin sanity_check_params info expr; (List.rev acc, expr) end
+
+let rec value_binding_notbuiltin
+          ~isrec
           (info : info)
           ({pvb_pat; pvb_expr; pvb_attributes; pvb_loc; }: P.value_binding) =
-  let is_builtin P.{attr_name = {txt; _}; _} = txt = "notation" in
+  let is_notation P.{attr_name = {txt; _}; _} = txt = "notation" in
   let get_payload payload = match payload with
     | P.PStr
       [{ pstr_desc =
@@ -280,33 +351,43 @@ let rec value_binding
     | _ -> assert false in
   let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
     | "notation" -> (get_payload attr_payload)
-    | s        ->
+    | s          ->
        Format.eprintf
          "\nIn file %s at line %d:\n  The builtin %s is not allowed.\n"
          info.info_fname pvb_loc.loc_start.pos_lnum s; exit 1 in
-  (* let add_info_lvar id = Hashtbl.add info.info_lvars id () in *)
-  let add_info_lvar id =
-    begin match Hashtbl.find_opt info.info_gvars id with
-    | None -> Hashtbl.add info.info_lvars id ()
-    | _ ->
-       Format.eprintf
-         "\nIn file %s at line %d:\n  The keyword %s is reserved.\n"
-         info.info_fname pvb_loc.loc_start.pos_lnum id;
-       exit 1
-    end in
-  let remove_info_lvar id = Hashtbl.remove info.info_lvars id in
+  let add_info_gvar id b =
+    try
+      begin
+        match Hashtbl.find info.info_known id with
+        | BNone -> Hashtbl.add info.info_gvars id b
+        | _ ->
+           Format.eprintf
+             "\nIn file %s at line %d:\n  The ident %s is a reserved keyword. (gvar error)\n"
+             info.info_fname pvb_loc.loc_start.pos_lnum id; exit 1
+      end
+    with Not_found -> Hashtbl.add info.info_gvars id b in
+  let remove_info_gvar id = Hashtbl.remove info.info_gvars id in
   let nitem =
     try
-      let attr = List.find is_builtin pvb_attributes in
+      let attr = List.find is_notation pvb_attributes in
       let nname = get_builtin attr in
       [Notation nname]
     with Not_found -> [] in
-  let id = name_of_pat pvb_pat in
-  add_info_lvar id;
-  let expr = expression info pvb_expr in
-  (* let expr = normalize_expr expr in *)
-  remove_info_lvar id;
-  [Decl (id, expr)] @ nitem
+  let id = name_of_pat info pvb_pat in
+  let (mvars, body) = split_coqparams info [] pvb_expr in
+  List.iter (fun id -> add_info_gvar id BNone) mvars;
+  let expr =
+    if isrec
+    then
+      begin
+        add_info_lvar info id pvb_loc;
+        let expr = expression info body in
+        remove_info_lvar info id;
+        expr
+      end
+    else expression info body in
+  List.iter remove_info_gvar mvars;
+  [Decl (id, mvars, expr)] @ nitem
 
 and string_of_longident = function
   | Lapply _ -> assert false (* TODO *)
@@ -320,7 +401,7 @@ and longident info t l = match t with
      else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
      else begin
          Format.eprintf
-           ("\nIn file %s at line %d:\n  symbol: '%s' is undefined.")
+           ("\nIn file %s at line %d:\n  symbol: '%s' is undefined. (longident error)")
            info.info_fname l.loc_start.pos_lnum s;
          exit 1
        end
@@ -392,18 +473,6 @@ and expression info expr =
   let is_ignore P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "ignore"; _} -> true
     | _ -> false in
-  (* let add_info_lvar id = Hashtbl.add info.info_lvars id () in *)
-  let add_info_lvar id loc =
-    begin match Hashtbl.find_opt info.info_gvars id with
-    | None -> Hashtbl.add info.info_lvars id ()
-    | _ -> Format.eprintf
-             "\nIn file %s at line %d:\n  The keyword %s is reserved.\n"
-             info.info_fname loc.loc_start.pos_lnum id;
-           exit 1
-    end in
-  (* let add_local_args args = List.iter add_info args in *)
-  let remove_info_lvar id = Hashtbl.remove info.info_lvars id in
-  (* let remove_local_args args = List.iter remove_info args in *)
   let mk_app e1 args =
     let find_builtin id = Hashtbl.find info.info_gvars id in
     let mk_app acc e = App (acc, e) in
@@ -422,16 +491,16 @@ and expression info expr =
   | Pexp_construct (c,o) -> construct info (c,o)
   | Pexp_ident t -> Var (longident info t.txt t.loc)
   | Pexp_fun (Nolabel, None, pat, expr) ->
-     let id = name_of_pat pat in
+     let id = name_of_pat info pat in
      begin
        match id with
        | "<>" ->
           let expr = expression info expr in
           Rec (BAnon, BAnon, expr)
        | _ ->
-          add_info_lvar id pat.ppat_loc;
+          add_info_lvar info id pat.ppat_loc;
           let expr = expression info expr in
-          remove_info_lvar id;
+          remove_info_lvar info id;
           Rec (BAnon, BNamed id, expr)
      end
   | Pexp_fun _ ->
@@ -538,22 +607,23 @@ and expression info expr =
      assert false
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
      begin
-       match value_binding info val_bind with
-       | [Decl (id, expr)]  ->
-          add_info_lvar id val_bind.pvb_pat.ppat_loc;
+       match value_binding_notbuiltin ~isrec:false info val_bind with
+       | [Decl (id, [], expr)]  ->
+          add_info_lvar info id val_bind.pvb_pat.ppat_loc;
           let expr2 = expression info e2 in
-          remove_info_lvar id;
+          remove_info_lvar info id;
           App (mk_lamb (BNamed id) expr2, expr)
+       | [Decl (_, _ :: _, _)] -> assert false
        | _ -> assert false
      end
   | Pexp_let (Recursive, [{pvb_pat; _} as val_bind], e2) ->
-     let fun_name = name_of_pat pvb_pat in
-     add_info_lvar fun_name pvb_pat.ppat_loc;
+     let fun_name = name_of_pat info pvb_pat in
+     add_info_lvar info fun_name pvb_pat.ppat_loc;
      begin
-       match value_binding info val_bind with
-       | [Decl (_id, expr)]  ->
+       match value_binding_notbuiltin ~isrec:true info val_bind with
+       | [Decl (_, [], expr)]  ->
           let expr2 = expression info e2 in
-          remove_info_lvar fun_name;
+          remove_info_lvar info fun_name;
           begin
             let arg, body = match expr with
               | Rec (_, b, e) -> b, e
@@ -564,6 +634,7 @@ and expression info expr =
             | _ ->
                App (Rec (BNamed fun_name, arg, body), expr2)
           end
+       | [Decl (_, _ :: _, _)] -> assert false
        | _ -> assert false
      end
   | Pexp_sequence (e1, e2) ->
@@ -573,14 +644,33 @@ and expression info expr =
   | Pexp_assert e ->
      add_assert info;
      Eassert (expression info e)
-  | Pexp_record (iel , _) ->
-     let mk_field_def (i,e) =
+  | Pexp_record (iel, _) ->
+     let field_name (i,_) =
        match i.txt with
-       | Lident s -> (s, expression info e)
-       | _ -> assert false (* TODO *) in
-     ERecord (List.map mk_field_def iel)
+       | Lident s -> s
+       | _ -> assert false in
+     if mem_fields (List.map field_name iel) !(info.info_rvars)
+     then
+       let mk_field_def (i,e) = (field_name (i,e), expression info e) in
+       ERecord (List.map mk_field_def iel)
+     else
+       begin
+         Format.eprintf
+           "\nIn file %s at line %d:\n  Some field names are unknown. (record value)\n"
+           info.info_fname expr.pexp_loc.loc_start.pos_lnum ;
+         exit 1
+       end
   | Pexp_open _ ->  assert false (* TODO *)
+  | Pexp_field (e, lid) -> record info e lid
   | _ -> assert false (* TODO *)
+
+and record _info expr lid =
+  match expr.P.pexp_desc, lid.txt with
+  | Pexp_ident {txt = (Lident r); _}, Lident f ->
+
+     EField (r, f)
+  | _ -> assert false (* only gvars are supported *)
+
 
 and pattern info P.{pc_lhs; pc_rhs; _} =
   let is_unit P.{ppat_desc; _} = match ppat_desc with
@@ -620,7 +710,8 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
        p, BNamed s.txt
     | _ ->
        Format.eprintf
-         "\nIn file %s at line %d:\n  pattern expression not supported.\n"
+         "\nIn file %s at line %d:\n\
+          \  this pattern construction not supported.\n"
          info.info_fname ppat_loc.loc_start.pos_lnum;
        exit 1 in
   let txt, binder = pat_desc pc_lhs in
@@ -666,16 +757,16 @@ and construct info = function
 let rec structure info str =
   let body = List.flatten (List.map (structure_item info) str) in
   let env = List.rev info.info_env in
-  mk_aneris_program env body info.info_known info.info_builtin
+  mk_aneris_program env body info.info_known info.info_rvars info.info_builtin
 
 and structure_item info str_item =
-  let add_info id b = Hashtbl.add info.info_gvars id b in
-  let add_known id b = Hashtbl.add info.info_known id b in
+  let add_info_gvar id b = Hashtbl.add info.info_gvars id b in
+  let add_known_builtin id b = Hashtbl.add info.info_known id b in
   let rec process_value_binding f = function
-    | Decl (id, expr) :: vl ->
-       add_info id BNone;
-       add_known id BNone;
-       (f id expr) :: (process_value_binding f vl)
+    | Decl (id, mvars, expr) :: vl ->
+       add_info_gvar id BNone;
+       add_known_builtin id BNone;
+       (f id mvars expr) :: (process_value_binding f vl)
     | [Notation s] -> [Notation s]
     | [] -> []
     (* currently supporting only one notation/decl per definition *)
@@ -688,20 +779,20 @@ and structure_item info str_item =
        value_binding_bultin info val_bind
      else
        process_value_binding
-         (fun id expr -> Decl (id, expr))
-         (value_binding info val_bind)
+         (fun id mvars expr -> Decl (id, mvars, expr))
+         (value_binding_notbuiltin ~isrec:false info val_bind)
   (* recursive let binding with no mutual recursion *)
   | Pstr_value (Recursive, [val_bind]) ->
      if is_builtin info then
        value_binding_bultin info val_bind
      else
        process_value_binding
-         (fun id expr ->
+         (fun id mvars expr ->
            let arg, body = match expr with
              | Rec (_, b, e) -> b, e
              | _ -> assert false in
-           Decl (id, Rec (BNamed id, arg, body)))
-         (value_binding info val_bind)
+           Decl (id, mvars, Rec (BNamed id, arg, body)))
+         (value_binding_notbuiltin ~isrec:true info val_bind)
   | Pstr_open {popen_expr = {pmod_desc = Pmod_ident m; _}; _} ->
      let fname = string_of_longident m.txt in
      if not (is_builtin info) then begin
@@ -709,10 +800,11 @@ and structure_item info str_item =
          let fname_ml = (String.uncapitalize_ascii fname) ^ ".ml" in
          let fname_ml, path = find_file_deps info fname_ml in
          let fname_ml = Filename.concat path fname_ml in
-         let ({prog_known; _} as p) = program nms fname_ml in
+         let ({prog_known; prog_fields; _} as p) = program nms fname_ml in
          (* add all known symbols to the gvars tables *)
-         let add_info id b = add_info id b in
-         Hashtbl.iter add_info prog_known;
+         let add_info_gvar id b = add_info_gvar id b in
+         Hashtbl.iter add_info_gvar prog_known;
+         info.info_rvars := join_fields !(prog_fields) !(info.info_rvars);
          let fname = String.uncapitalize_ascii fname in
          info.info_env <- add_env info.info_env fname path p
        end;
@@ -720,6 +812,7 @@ and structure_item info str_item =
               what should we do about [open] inside builtins? *)
      info.info_deps <- fname :: info.info_deps;
      []
+
   (* exceptions are currently not supported *)
   | Pstr_exception te ->
      if is_builtin info
@@ -730,13 +823,49 @@ and structure_item info str_item =
            info.info_fname te.ptyexn_loc.loc_start.pos_lnum;
          exit 1
        end
-  (* types are currently not supported *)
-  | Pstr_type _ -> []
-  (*| Pstr_type (_, {ptype_name; _} :: _) ->
+  | Pstr_type (_, {ptype_kind; _} :: _) ->
+     let get_fieldname _info ({pld_name; _}: P.label_declaration) =
+       pld_name.txt in
      if is_builtin info
-     then []
+     then
+       begin
+         match ptype_kind with
+         | Ptype_record l ->
+            let flds = List.map (get_fieldname info) l in
+            begin
+              try
+                info.info_rvars := add_fields flds !(info.info_rvars);
+                []
+              with FieldsAlreadyExist ->
+                Format.eprintf
+                  "\nIn file %s:\n  some of record fields {%a}\
+                   \ are reserved and cannot be redefined.\n"
+                  info.info_fname
+                  (Format.pp_print_list ~pp_sep:pp_comma
+                     Format.pp_print_string) flds;
+                exit 1
+            end
+         | _ -> []
+       end
      else
        begin
+         match ptype_kind with
+         | Ptype_record l ->
+            let flds = List.map (get_fieldname info) l in
+            begin
+              if mem_fields flds !(info.info_rvars)
+              then
+                (Format.eprintf
+                  "\nIn file %s:\n  some of record fields {%a}\
+                   \ are reserved and cannot be redefined.\n"
+                  info.info_fname
+                  (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string) flds;
+                 exit 1)
+              else []
+            end
+         | _ -> []
+       end
+  (* begin
          Format.eprintf
            "\nIn file %s at line %d:\n \
             \ type declarations are not supported."

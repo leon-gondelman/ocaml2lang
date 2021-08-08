@@ -1,10 +1,7 @@
 open Lang
 open List
 open Network_util
-
-type 'a serialization =
-  { dbs_ser : 'a -> string;
-    dbs_deser : string -> 'a}
+open Serialization_type
 
 let int_ser v = i2s v
 
@@ -34,13 +31,13 @@ let string_serialization =
   { dbs_ser   = string_ser;
     dbs_deser = string_deser }
 
-let prod_ser (serA[@Gvar]) (serB[@Gvar]) =
+let prod_ser (serA[@metavar]) (serB[@metavar]) =
   fun v ->
   let s1 = serA (fst v) in
   let s2 = serB (snd v) in
   (i2s (strlen s1)) ^ "_" ^ s1 ^ s2
 
-let prod_deser (deserA[@Gvar]) (deserB[@Gvar]) =
+let prod_deser (deserA[@metavar]) (deserB[@metavar]) =
   fun s ->
     match findFrom s 0 '_' with
       Some i ->
@@ -54,10 +51,11 @@ let prod_deser (deserA[@Gvar]) (deserB[@Gvar]) =
     | None -> assert false
 
 let prod_serialization
-      (sA[@Gvar] : 'a serialization) (sB[@Gvar] : 'b serialization)
+      (sA[@metavar] : 'a serialization) (sB[@metavar] : 'b serialization)
     : ('a * 'b) serialization =
   { dbs_ser   = prod_ser sA.dbs_ser sB.dbs_ser ;
     dbs_deser = prod_deser sA.dbs_deser sB.dbs_deser }
+
 (* TODO *)
 (* let saddr_ser s =
   match s with  SADDR (ip, p) -> prod_ser string_ser int_ser (ip, p)
@@ -70,13 +68,13 @@ let saddr_serialiazation =
   { dbs_ser   = saddr_ser ;
     dbs_deser = saddr_deser } *)
 
-let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
+let sum_ser  (serA[@metavar]) (serB[@metavar])  =
     fun v ->
     match v with
       InjL x -> "L" ^ "_" ^ serA x
     | InjR x -> "R" ^ "_" ^ serB x
 
- let sum_deser (deserA[@Gvar]) (deserB[@Gvar]) =
+ let sum_deser (deserA[@metavar]) (deserB[@metavar]) =
    fun s ->
    let tag = substring s 0 2 in
    let rest = substring s 2 (strlen s - 2) in
@@ -89,23 +87,23 @@ let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
        assert false;;
 
  let sum_serialization
-       (sA[@Gvar] : 'a serialization)
-       (sB[@Gvar] : 'b serialization)
+       (sA[@metavar] : 'a serialization)
+       (sB[@metavar] : 'b serialization)
      : ('a, 'b) sumTy serialization =
    { dbs_ser   = sum_ser sA.dbs_ser sB.dbs_ser ;
      dbs_deser = sum_deser sA.dbs_deser sB.dbs_deser }
 
- let option_ser (ser[@Gvar])  =
+ let option_ser (ser[@metavar])  =
    sum_ser unit_ser ser
 
- let option_deser (deser[@Gvar])  =
+ let option_deser (deser[@metavar])  =
    sum_deser unit_deser deser
 
- let option_serialization (s[@Gvar])   =
+ let option_serialization (s[@metavar])   =
   { dbs_ser   = option_ser s.dbs_ser ;
     dbs_deser = option_deser s.dbs_deser }
 
- let list_ser (ser[@Gvar])  =
+ let list_ser (ser[@metavar])  =
    let rec list_ser v =
      match v with
        Some a ->
@@ -115,7 +113,7 @@ let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
      | None -> ""
    in list_ser
 
- let list_deser (deser[@Gvar]) =
+ let list_deser (deser[@metavar]) =
    let rec list_deser s =
      match findFrom s 0 '_' with
        Some i ->
@@ -130,6 +128,6 @@ let sum_ser  (serA[@Gvar]) (serB[@Gvar])  =
    in list_deser
 
  let list_serialization
-       (s[@Gvar] : 'a serialization) : 'a alist serialization =
+       (s[@metavar] : 'a serialization) : 'a alist serialization =
   { dbs_ser   = list_ser s.dbs_ser ;
     dbs_deser = list_deser s.dbs_deser }

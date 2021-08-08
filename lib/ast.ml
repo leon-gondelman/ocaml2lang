@@ -79,6 +79,7 @@ type expr =
   | CAS of expr * expr * expr
   (* Ocaml records to be translated to Coq records *)
   | ERecord of (ident * expr) list
+  | EField of (ident * ident)
 
 and branch = ident * expr
 
@@ -91,7 +92,7 @@ and value =
   | SomeV of value
   | NoneV
 
-type decl = string * expr
+type decl = ident * (ident list) * expr
 
 type notation = string
 
@@ -105,12 +106,37 @@ type builtin =
 
 type known_map = (string, builtin) Hashtbl.t
 
+module StringSet = Set.Make(String)
+module StringSetSet = Set.Make(StringSet)
+
+type known_fields = StringSetSet.t
+
+let mk_fields () = StringSetSet.empty
+
+let mem_fields sl kfls =
+  StringSetSet.mem (StringSet.of_list sl) kfls
+
+exception FieldsAlreadyExist
+
+let add_fields sl kfls =
+  if not (mem_fields sl kfls)
+  then  StringSetSet.add (StringSet.of_list sl) kfls
+  else raise FieldsAlreadyExist
+
+let get_all_fields kfls =
+  List.map (StringSet.elements) (StringSetSet.elements kfls)
+
+
+
+let join_fields f1 f2 = StringSetSet.union f1 f2
+
 type path = string
 
 type aneris_program = {
   prog_env    : env;
   prog_body   : program_item list;
   prog_known  : known_map;
+  prog_fields : known_fields ref;
   prog_builtin: bool;
 }
 
@@ -120,6 +146,7 @@ let empty_program = {
   prog_env = [];
   prog_body = [];
   prog_known = Hashtbl.create 16;
+  prog_fields = ref StringSetSet.empty;
   prog_builtin = true;
 }
 
@@ -138,5 +165,6 @@ type 'a pp = formatter -> 'a -> unit
 (* let pp_env ~pp_sep ~pp_elts fmt (env: env) =
  *   List.iter (fun (k, _) -> fprintf fmt "%a" pp_elts k; pp_sep fmt ()) env *)
 
-let mk_aneris_program prog_env prog_body prog_known prog_builtin =
-  { prog_env; prog_body; prog_known; prog_builtin }
+let mk_aneris_program
+      prog_env prog_body prog_known prog_fields prog_builtin =
+  { prog_env; prog_body; prog_known; prog_fields; prog_builtin }
