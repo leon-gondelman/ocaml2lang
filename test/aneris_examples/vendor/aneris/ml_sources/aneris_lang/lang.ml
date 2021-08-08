@@ -7,7 +7,7 @@ open Network
 
 type ('a, 'b) sumTy = InjL of 'a | InjR of 'b
 
-let[@builtin "MakeAddress"] makeAddress (ip : ip_address) (port : int) =
+let[@builtin "MakeAddress"] makeAddress (ip : string) (port : int) =
   ADDR_INET (inet_addr_of_string ip, port)
 
 let[@builtin "NewSocket"] socket x y z = socket x y (num_of_protocol z)

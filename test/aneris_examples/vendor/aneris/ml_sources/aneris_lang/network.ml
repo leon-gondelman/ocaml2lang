@@ -2,8 +2,8 @@ open Unix
 
 type protocol = IPPROTO_UDP
 
-type ip_address = string
-type saddr = SADDR of (ip_address * int)
+
+type saddr = SADDR of (string * int)
 
 let num_of_protocol = function
   | IPPROTO_UDP -> 0

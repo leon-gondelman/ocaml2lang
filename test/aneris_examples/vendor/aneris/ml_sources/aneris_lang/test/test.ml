@@ -8,7 +8,7 @@ open Serialization_type
 
 let int_ser _v =  "0"
 
-let int_deser = s2i
+let int_deser s = unSOME (s2i s)
 
 let int_serialization =
   { dbs_ser   = int_ser;
@@ -18,7 +18,7 @@ let int_serialization =
 
 (* let f (x[@metavar]) y = (x, y) *)
 
-let prod_ser (serA[@metavar]) (serB[@metavar]) =
+let prod_ser (serA[@metavar]) (serB[@metavar]) : ('a * 'b) -> string =
   fun v ->
   let s1 = serA (fst v) in
   let s2 = serB (snd v) in
@@ -46,6 +46,9 @@ let prod_serialization (sA[@metavar "serialization"]) (sB[@metavar "serializatio
 (* let wrong_a_bit (x[@metavar]) y (z[@metavar]) = (x,(y,z)) *)
 
 let int_prod_serialization = prod_serialization int_serialization int_serialization
+
+let f s = (prod_deser int_deser int_deser) s
+
 (*q
 let p1 = (1,(2,(3,4)))
 let p2 = (((1,2),3),4)
