@@ -11,6 +11,7 @@ ML_SOURCES:
 	stenning/stenning_code.ml
 	crdt/gcounter/code.ml
 	util/util.ml
+	consensus/paxos_code.ml
 
 ML_DEPENDENCIES:
         util

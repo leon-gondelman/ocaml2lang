@@ -661,14 +661,15 @@ and expression info expr =
          exit 1
        end
   | Pexp_open _ ->  assert false (* TODO *)
-  | Pexp_field (e, lid) -> record info e lid
+  | Pexp_field (e, lid) -> record_field info e lid
   | _ -> assert false (* TODO *)
 
-and record _info expr lid =
+and record_field info expr lid =
   match expr.P.pexp_desc, lid.txt with
   | Pexp_ident {txt = (Lident r); _}, Lident f ->
-
-     EField (r, f)
+     EField (Var (Vgvar (Gvar r)), f)
+  | _, Lident f ->
+     EField (expression info expr, f)
   | _ -> assert false (* only gvars are supported *)
 
 

@@ -162,7 +162,7 @@ and pp_expr ?(paren=false) fmt = function
        | RemOp     -> "`rem`"
        | AndOp     -> "&&"
        | OrOp      -> "||"
-       | XorOp     -> assert false
+       | XorOp     -> "≠"
        | ShiftLOp  -> assert false
        | ShiftROp  -> assert false
        | LeOp      -> "≤"
@@ -186,7 +186,7 @@ and pp_expr ?(paren=false) fmt = function
        (pp_expr ~paren:true) e3
   | Pair _ as p ->
      let tuple = list_of_pair p in
-     fprintf fmt "(@[<hov>%a@])"
+     fprintf fmt "(@[<h>%a@])"
        (pp_print_list ~pp_sep:pp_comma (pp_expr ~paren)) tuple
   | Fst e ->
       fprintf fmt (protect_on paren "Fst %a") (pp_expr ~paren:true) e
@@ -252,8 +252,8 @@ and pp_expr ?(paren=false) fmt = function
        fprintf fmt "@[    %s := %a;@]" fd (pp_expr ~paren:false) e in
      fprintf fmt "{|@\n%a@\n|}"
        (pp_print_list ~pp_sep:pp_newline pp_record_field_def) iel
-  | EField (r, f) ->
-     fprintf fmt "%s.(%s)" r f
+  | EField (e, f) ->
+     fprintf fmt (protect_on paren "%a.(%s)") (pp_expr  ~paren:true) e f
   | CAS  _ -> assert false
   | Start  _ -> assert false
 
@@ -280,7 +280,7 @@ and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
 (* NB: currently cannot distinguish between expr and coq record, since
    no type info is available from ppx *)
 let pp_decl_lang_other fmt (id, mvars, expr) =
-  fprintf fmt "@[<hov 2>Definition %s @[%a@] :=@ @[%a@].@]"
+  fprintf fmt "@[<hov 2>Definition %s @[%a@]:=@ @[%a@].@]"
     id
     (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
     (pp_expr ~paren:false) expr
@@ -299,7 +299,7 @@ let pp_decl_coq_record fmt (id, mvars, expr) =
 
 let pp_decl fmt (id, mvars, expr) =
   match expr with
-  | Val _ | Rec _ | Var _ -> pp_decl_lang_val fmt (id, mvars, expr)
+  | Val _ | Rec _  -> pp_decl_lang_val fmt (id, mvars, expr)
   | ERecord _ -> pp_decl_coq_record fmt (id, mvars, expr)
   | _     -> pp_decl_lang_other fmt (id, mvars, expr)
 

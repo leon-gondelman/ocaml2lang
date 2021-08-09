@@ -79,7 +79,7 @@ type expr =
   | CAS of expr * expr * expr
   (* Ocaml records to be translated to Coq records *)
   | ERecord of (ident * expr) list
-  | EField of (ident * ident)
+  | EField of (expr * ident)
 
 and branch = ident * expr
 

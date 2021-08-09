@@ -3,3 +3,4 @@ vendor/aneris/ml_sources/aneris_lang/network.ml
 vendor/aneris/ml_sources/aneris_lang/notation.ml
 vendor/aneris/ml_sources/aneris_lang/lib/assert.ml
 vendor/aneris/ml_sources/aneris_lang/lib/lock.ml
+vendor/aneris/ml_sources/aneris_lang/lib/serialization/serialization_type.ml

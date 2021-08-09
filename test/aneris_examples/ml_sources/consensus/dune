@@ -1,0 +1,4 @@
+(library
+  (name paxos)
+  (flags :standard -rectypes)
+  (libraries aneris))

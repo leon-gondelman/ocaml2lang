@@ -7,7 +7,7 @@ type 'a alist = ('a * 'a alist) option
  *   list_nil = None *)
 
 let[@notation
-  "Notation \"[ ]\" := (list_nil) (format \"[ ]\") : expr_scope."]
+  {|Notation "[ ]" := (list_nil) (format "[ ]") : expr_scope.|}]
   list_nil = None
 
 let[@notation
