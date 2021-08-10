@@ -1,4 +1,4 @@
-(library
-  (name paxos)
+(executable
+  (name paxos_runner)
   (flags :standard -rectypes)
   (libraries aneris))

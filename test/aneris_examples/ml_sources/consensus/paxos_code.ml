@@ -6,7 +6,7 @@ open! Map
 open Network_util
 open! Serialization_type
 open Serialization
-
+open Network
 let ballot_serialization = int_serialization
 
 (* either [prepare(b)] or [accept(b, v)] *)
@@ -198,8 +198,14 @@ let client (valS[@metavar]) addr =
   let sender1 = snd msg1 in
   let m1 = (client_serialization valS).dbs_deser (fst msg1) in
   let val1 = snd m1 in
-  let msg2 = (wait_receivefrom skt (fun m -> snd m <> sender1)) in
+  let msg2 = (wait_receivefrom skt (fun m -> not (snd m = sender1))) in
+  Format.printf "orig of learners for msg1 and msg2: (%s, %d) and (%s, %d) \n%!"
+    (ip_of_address sender1)
+    (port_of_address sender1)
+    (ip_of_address (snd msg2))
+    (port_of_address (snd msg2)) ;
   let m2 = (client_serialization valS).dbs_deser (fst msg2) in
   let val2 = snd m2 in
+  Format.printf "received values: (%d, %d) \n%!" val1 val2;
   assert (val1 = val2);
   val1
