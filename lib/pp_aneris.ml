@@ -306,10 +306,10 @@ let pp_decl fmt (id, mvars, expr) =
 let pp_program fmt p =
   let pp_program_item fmt pi =
     match pi with
-    | Decl (id, mvars, expr) -> pp_decl fmt (id, mvars, expr)
-    | Notation s ->
-       fprintf fmt "@[<v>@[%s@]" s in
-  fprintf fmt "@[%a@]@."
+    | PDecl (id, mvars, expr) -> pp_decl fmt (id, mvars, expr)
+    | PNotation s -> fprintf fmt "@[<v>@[%s@]" s
+    | PComment s -> fprintf fmt "@[<v>@[(* %s *)@]" s in
+    fprintf fmt "@[%a@]@."
     (pp_print_list ~pp_sep:pp_newline2 pp_program_item) p
 
 let pp_builtin fmt = function

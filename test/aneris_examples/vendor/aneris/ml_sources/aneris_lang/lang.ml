@@ -7,14 +7,14 @@ open Network
 
 type ('a, 'b) sumTy = InjL of 'a | InjR of 'b
 
-let[@builtin "MakeAddress"] makeAddress (ip : string) (port : int) =
+let[@builtinAtom "MakeAddress"] makeAddress (ip : string) (port : int) =
   ADDR_INET (inet_addr_of_string ip, port)
 
-let[@builtin "NewSocket"] socket x y z = socket x y (num_of_protocol z)
+let[@builtinAtom "NewSocket"] socket x y z = socket x y (num_of_protocol z)
 
-(* let[@builtin] udp_socket () = socket PF_INET SOCK_DGRAM 0 *)
+(* let[@builtinAtom] udp_socket () = socket PF_INET SOCK_DGRAM 0 *)
 
-let[@builtin "ReceiveFrom"] receiveFrom skt =
+let[@builtinAtom "ReceiveFrom"] receiveFrom skt =
   let buffer = Bytes.create 65536 in
   try
     match recvfrom skt buffer 0 65536 [] with
@@ -27,11 +27,11 @@ let[@builtin "ReceiveFrom"] receiveFrom skt =
   | Unix_error (EWOULDBLOCK, _, _) -> None
 
 (* translate only name *)
-let[@builtin "SendTo"] sendTo skt msg sa =
+let[@builtinAtom "SendTo"] sendTo skt msg sa =
   sendto skt (Bytes.of_string msg) 0 (String.length msg) [] (of_saddr sa)
 
 (* translate only name *)
-let[@builtin "SocketBind"] socketBind socket addr = bind socket (of_saddr addr)
+let[@builtinAtom "SocketBind"] socketBind socket addr = bind socket (of_saddr addr)
 
 exception OnlyPosTimeout
 
@@ -44,34 +44,34 @@ let makeDecimal n =
   in aux f
 
 (* translate only name *)
-let[@builtin "SetReceiveTimeout"] setReceiveTimeout sh n m =
+let[@builtinAtom "SetReceiveTimeout"] setReceiveTimeout sh n m =
   let fn = float_of_int n in
   let fm = makeDecimal m in
   Unix.setsockopt_float sh SO_RCVTIMEO (fn +. fm)
 
-let[@builtin "Fork"] fork e =
+let[@builtinAtom "Fork"] fork e =
   let _ = Thread.create (fun () -> e) () in ()
 
-let[@builtin "FindFrom"] findFrom e0 e1 e2 =
+let[@builtinAtom "FindFrom"] findFrom e0 e1 e2 =
   String.index_from_opt e0 e1 e2
 
-let[@builtin "Substring"] substring e0 e1 e2 =
+let[@builtinAtom "Substring"] substring e0 e1 e2 =
   try String.sub e0 e1 e2
   with Invalid_argument _ -> ""
 
 (* (UnOp StringLength e) *)
-let[@UnOp "StringLength"] strlen = String.length
+let[@builtinUnOp "StringLength"] strlen = String.length
 
 (* (UnOp StringOfInt e) *)
-let[@UnOp "StringOfInt"] stringOfInt = string_of_int
+let[@builtinUnOp "StringOfInt"] stringOfInt = string_of_int
 
 (* Translate to UnOp IntOfString e *)
-let[@UnOp "IntOfString"] intOfString = int_of_string_opt
+let[@builtinUnOp "IntOfString"] intOfString = int_of_string_opt
 
 (* Translate to UnOp StringOfInt e *)
-let[@builtin "i2s"] i2s = string_of_int
+let[@builtinAtom "i2s"] i2s = string_of_int
 
 (* Translate to UnOp IntOfString e *)
-let[@builtin "s2i"] s2i = int_of_string_opt
+let[@builtinAtom "s2i"] s2i = int_of_string_opt
 
-let [@builtin "RefLbl"] ref_lbl _s e = ref e
+let [@builtinAtom "RefLbl"] ref_lbl _s e = ref e

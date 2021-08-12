@@ -99,7 +99,7 @@ type decl = ident * (ident list) * expr
 
 type notation = string
 
-type program_item = Decl of decl | Notation of notation
+type program_item = PDecl of decl | PNotation of notation | PComment of string
 
 type builtin =
   | BNone

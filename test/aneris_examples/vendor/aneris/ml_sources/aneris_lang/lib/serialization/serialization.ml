@@ -84,7 +84,7 @@ let sum_ser  (serA[@metavar]) (serB[@metavar])  =
      if tag = "R_" then
        InjR (deserB rest)
      else
-       assert false;;
+       assert false
 
  let sum_serialization
        (sA[@metavar] : 'a serialization)
@@ -92,6 +92,28 @@ let sum_ser  (serA[@metavar]) (serB[@metavar])  =
      : ('a, 'b) sumTy serialization =
    { dbs_ser   = sum_ser sA.dbs_ser sB.dbs_ser ;
      dbs_deser = sum_deser sA.dbs_deser sB.dbs_deser }
+
+let opt_ser  (ser[@metavar])  =
+    fun v ->
+    match v with
+      None -> "L" ^ "_" ^ ""
+    | Some x -> "R" ^ "_" ^ ser x
+
+ let opt_deser (deser[@metavar]) =
+   fun s ->
+   let tag = substring s 0 2 in
+   let rest = substring s 2 (strlen s - 2) in
+   if tag = "L_" then
+     None
+   else
+     if tag = "R_" then
+       Some (deser rest)
+     else
+       assert false
+
+let opt_serialization (s[@metavar])   =
+  { dbs_ser   = opt_ser s.dbs_ser ;
+    dbs_deser = opt_deser s.dbs_deser }
 
  let option_ser (ser[@metavar])  =
    sum_ser unit_ser ser

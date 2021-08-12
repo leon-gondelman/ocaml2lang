@@ -19,7 +19,7 @@ let acceptor_serialization (value_serialization[@metavar]) =
    possibly already accepted value and its ballot *)
 let proposer_serialization (value_serialization[@metavar]) =
   prod_serialization ballot_serialization
-    (option_serialization
+    (opt_serialization
        (prod_serialization ballot_serialization
           value_serialization))
 
@@ -35,7 +35,7 @@ let acceptor (valS[@metavar]) learners addr =
   let skt = socket PF_INET SOCK_DGRAM IPPROTO_UDP in
   socketBind skt addr;
   let maxBal = ref None in
-  let maxVal = ref (InjL ()) in
+  let maxVal = ref None in
   let rec loop () =
     let msg = unSOME (receiveFrom skt) in
     let m = fst msg in
@@ -59,7 +59,7 @@ let acceptor (valS[@metavar]) learners addr =
           if (b = None) || (unSOME b <= bal) then
             begin
               maxBal := Some bal;
-              maxVal := InjR accept;
+              maxVal := Some accept;
               ignore(sendto_all_set skt learners ((learner_serialization valS).dbs_ser accept))
             end
           else ()
@@ -96,17 +96,17 @@ let find_max_promise l =
   set_foldl
     (fun acc promise ->
        match promise with
-         InjR p ->
+         Some p ->
            begin
              match acc with
-               InjR a ->
+               Some a ->
                  let b1 = fst p in
                  let b2 = fst a in
                  if b1 < b2 then acc else promise
-             | InjL () -> promise
+             | None -> promise
            end
-       | InjL () -> acc)
-    (InjL ()) l
+       | None -> acc)
+   None l
 
 
 
@@ -131,8 +131,8 @@ let proposer (valS[@metavar])
   let max_promise = find_max_promise promises in
   let accept_value =
     match max_promise with
-      InjR p -> snd p
-    | InjL () -> v
+      Some p -> snd p
+    | None -> v
   in
   sendto_all_set skt acceptors
     ((acceptor_serialization valS).dbs_ser (InjR (bal, accept_value)))
@@ -191,6 +191,7 @@ let learner' (valS[@metavar]) acceptors addr client =
   let z = learner valS skt acceptors in
   sendTo skt ((client_serialization valS).dbs_ser z) client
 
+
 let client (valS[@metavar]) addr =
   let skt = socket PF_INET SOCK_DGRAM IPPROTO_UDP in
   socketBind skt addr;
@@ -199,13 +200,14 @@ let client (valS[@metavar]) addr =
   let m1 = (client_serialization valS).dbs_deser (fst msg1) in
   let val1 = snd m1 in
   let msg2 = (wait_receivefrom skt (fun m -> not (snd m = sender1))) in
-  Format.printf "orig of learners for msg1 and msg2: (%s, %d) and (%s, %d) \n%!"
-    (ip_of_address sender1)
-    (port_of_address sender1)
-    (ip_of_address (snd msg2))
-    (port_of_address (snd msg2)) ;
+  (* Format.printf
+     "orig of learners for msg1 and msg2: (%s, %d) and (%s, %d) \n%!"
+     (ip_of_address sender1)
+     (port_of_address sender1)
+     (ip_of_address (snd msg2))
+     (port_of_address (snd msg2)); *)
   let m2 = (client_serialization valS).dbs_deser (fst msg2) in
   let val2 = snd m2 in
-  Format.printf "received values: (%d, %d) \n%!" val1 val2;
+  (* Format.printf "received values: (%d, %d) \n%!" val1 val2; *)
   assert (val1 = val2);
   val1
