@@ -65,6 +65,8 @@ let op_char_34   = op_char_3 | op_char_4
 rule token = parse
   | newline
       { newline lexbuf; token lexbuf }
+  | "#"
+      { comment lexbuf }
   | space+
       { token lexbuf }
   | ":"
@@ -79,3 +81,9 @@ rule token = parse
       { EOF }
   | _ as c
       { failwith ("Illegal Character " ^ (Char.escaped c)) }
+
+and comment = parse
+  | newline
+      { token lexbuf }
+  | _
+      { comment lexbuf }
