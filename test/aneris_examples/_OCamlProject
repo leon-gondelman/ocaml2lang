@@ -9,9 +9,10 @@ IMPORT_PATH_PREFIX:
 ML_SOURCES:
 	ping_pong/code.ml
 	stenning/stenning_code.ml
-	crdt/gcounter/code.ml
+#	crdt/gcounter/code.ml
 #	util/util.ml
 	consensus/paxos_code.ml
+	ccddb/ccddb_code.ml
 
 ML_DEPENDENCIES:
         util
@@ -20,3 +21,4 @@ ML_DEPENDENCIES:
 	-V vendor/aneris/ml_sources/aneris_lang/
 	-V vendor/aneris/ml_sources/aneris_lang/lib
 	-V vendor/aneris/ml_sources/aneris_lang/lib/serialization
+	-V vendor/aneris/ml_sources/aneris_lang/lib/vector_clock

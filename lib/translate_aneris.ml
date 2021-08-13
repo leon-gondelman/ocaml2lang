@@ -296,9 +296,6 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
     with Not_found -> () end;
   []
 
-
-
-
 let is_metavar info P.{attr_name = {txt; _}; attr_loc; _} =
   if txt = "metavar" then true
   else
@@ -335,10 +332,6 @@ let rec split_coqparams info (acc : ident list) expr =
        begin sanity_check_params info expr; (List.rev acc, expr) end
   | _ ->
      begin sanity_check_params info expr; (List.rev acc, expr) end
-
-
-
-
 
 let rec value_binding_notbuiltin
           ~isrec

@@ -208,7 +208,7 @@ and pp_expr ?(paren=false) fmt = function
   | Alloc (Some lbl, e) ->
      fprintf fmt (protect_on paren "ref<<%s>> %a") lbl (pp_expr ~paren:true) e
   | Load e ->
-     fprintf fmt (protect_on paren"! %a") (pp_expr ~paren:true) e
+     fprintf fmt "! %a" (pp_expr ~paren:true) e
   | Store (e1, e2) ->
       fprintf fmt (protect_on paren "%a <- %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
