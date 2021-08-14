@@ -5,10 +5,15 @@ type 'a aset = 'a alist
 
 let set_empty () : 'a aset = list_nil
 
+[@@@NOTATION {|Notation "{[ x ]}" := (set_add x (set_empty #())) (at level 1, format "{[ x ]}") : expr_scope.|}]
+
 let set_add : 'a -> 'a aset -> 'a aset =
   fun x s ->
   if list_mem x s then s
   else list_cons x s
+
+[@@@NOTATION {|Notation "{[ x ; y ; .. ; z ]}" :=
+  (set_add x (set_add y .. (set_add z (set_empty #())) ..)) : expr_scope. |}]
 
 let set_mem : 'a -> 'a aset -> bool = list_mem
 

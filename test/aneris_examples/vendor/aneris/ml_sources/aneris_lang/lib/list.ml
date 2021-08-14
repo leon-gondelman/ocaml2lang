@@ -2,14 +2,21 @@ open! Lang
 
 type 'a alist = ('a * 'a alist) option
 
+let list_nil = None
+
 [@@@NOTATION {|Notation "[ ]" := (list_nil) (format "[ ]") : expr_scope.|}]
 
-let list_nil = None
+
+let list_cons elem list = Some (elem, list)
 
 [@@@NOTATION
   {|Infix "::" := list_cons (at level 60, right associativity) : expr_scope.|}]
 
-let list_cons elem list = Some (elem, list)
+[@@@NOTATION
+  {|Notation "[ x ]" := (list_cons x list_nil) (format "[ x ]") : expr_scope.|}]
+
+[@@@NOTATION
+  {|Notation "[ x ; y ; .. ; z ]" := (list_cons x (list_cons y .. (list_cons z list_nil) ..)) : expr_scope.|}]
 
 let list_head l =
   match l with
