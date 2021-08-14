@@ -7,29 +7,29 @@ open Network_util
 open! Serialization_type
 open Serialization
 open Network
-let ballot_serialization = int_serialization
+let ballot_serializer = int_serializer
 
 (* either [prepare(b)] or [accept(b, v)] *)
-let acceptor_serialization (value_serialization[@metavar]) =
-  sum_serialization ballot_serialization
-    (prod_serialization ballot_serialization
-      value_serialization)
+let acceptor_serializer (value_serializer[@metavar]) =
+  sum_serializer ballot_serializer
+    (prod_serializer ballot_serializer
+      value_serializer)
 
 (* The paylod of a [promise(b, (b', v)?)] message is a ballot number and a
    possibly already accepted value and its ballot *)
-let proposer_serialization (value_serialization[@metavar]) =
-  prod_serialization ballot_serialization
-    (opt_serialization
-       (prod_serialization ballot_serialization
-          value_serialization))
+let proposer_serializer (value_serializer[@metavar]) =
+  prod_serializer ballot_serializer
+    (opt_serializer
+       (prod_serializer ballot_serializer
+          value_serializer))
 
 (* The paylod of an [ack] message is the proposal number and an accepted
    value *)
-let learner_serialization (value_serialization[@metavar]) =
-  prod_serialization ballot_serialization value_serialization
+let learner_serializer (value_serializer[@metavar]) =
+  prod_serializer ballot_serializer value_serializer
 
-let client_serialization (value_serialization[@metavar]) =
-  prod_serialization ballot_serialization value_serialization
+let client_serializer (value_serializer[@metavar]) =
+  prod_serializer ballot_serializer value_serializer
 
 let acceptor (valS[@metavar]) learners addr =
   let skt = socket PF_INET SOCK_DGRAM IPPROTO_UDP in
@@ -41,13 +41,13 @@ let acceptor (valS[@metavar]) learners addr =
     let m = fst msg in
     let sender = snd msg in
     begin
-      match (acceptor_serialization valS).dbs_deser m with
+      match (acceptor_serializer valS).s_deser m with
         InjL bal ->
           let b = !maxBal in
           if (b = None) || (unSOME b < bal) then
             begin
               maxBal := Some bal;
-              ignore(sendTo skt ((proposer_serialization valS).dbs_ser ((bal, !maxVal))) sender)
+              ignore(sendTo skt ((proposer_serializer valS).s_ser ((bal, !maxVal))) sender)
             end
           else ()
       | InjR accept -> (* accept(bal, v) *)
@@ -60,7 +60,7 @@ let acceptor (valS[@metavar]) learners addr =
             begin
               maxBal := Some bal;
               maxVal := Some accept;
-              ignore(sendto_all_set skt learners ((learner_serialization valS).dbs_ser accept))
+              ignore(sendto_all_set skt learners ((learner_serializer valS).s_ser accept))
             end
           else ()
     end;
@@ -78,7 +78,7 @@ let recv_promises (valS[@metavar])
      if set_cardinal !senders = n then !promises
      else
        let msg = unSOME (receiveFrom skt) in
-       let promise =  (proposer_serialization valS).dbs_deser (fst msg) in
+       let promise =  (proposer_serializer valS).s_deser (fst msg) in
        let sender = snd msg in
        let bal' = fst promise in
        let mval = snd promise in
@@ -119,7 +119,7 @@ let proposer (valS[@metavar])
   (* Phase 1 *)
   (* the proposer sends a [prepare] request for proposal [n] to a majority
      acceptors (here we send to all) *)
-  sendto_all_set skt acceptors ((acceptor_serialization valS).dbs_ser (InjL bal)) ;
+  sendto_all_set skt acceptors ((acceptor_serializer valS).s_ser (InjL bal)) ;
 (* Phase 2 *)
 (* if the proposer receives a reponse [promise] to its [prepare] request for
    [bal] from a majority of acceptors, it sends an [accept] request to each of
@@ -135,7 +135,7 @@ let proposer (valS[@metavar])
     | None -> v
   in
   sendto_all_set skt acceptors
-    ((acceptor_serialization valS).dbs_ser (InjR (bal, accept_value)))
+    ((acceptor_serializer valS).s_ser (InjR (bal, accept_value)))
 
 
 let proposer'
@@ -165,7 +165,7 @@ let learner (valS[@metavar])
   let votes_ref = ref (map_empty ()) in
   let rec loop () =
     let msg = unSOME (receiveFrom skt) in
-    let vote = (learner_serialization valS).dbs_deser (fst msg) in
+    let vote = (learner_serializer valS).s_deser (fst msg) in
     let bal = fst vote in
     let value = snd vote in
     let sender = snd msg in
@@ -189,7 +189,7 @@ let learner' (valS[@metavar]) acceptors addr client =
   let skt = socket PF_INET SOCK_DGRAM IPPROTO_UDP in
   socketBind skt addr;
   let z = learner valS skt acceptors in
-  sendTo skt ((client_serialization valS).dbs_ser z) client
+  sendTo skt ((client_serializer valS).s_ser z) client
 
 
 let client (valS[@metavar]) addr =
@@ -197,7 +197,7 @@ let client (valS[@metavar]) addr =
   socketBind skt addr;
   let msg1 = unSOME (receiveFrom skt) in
   let sender1 = snd msg1 in
-  let m1 = (client_serialization valS).dbs_deser (fst msg1) in
+  let m1 = (client_serializer valS).s_deser (fst msg1) in
   let val1 = snd m1 in
   let msg2 = (wait_receivefrom skt (fun m -> not (snd m = sender1))) in
   (* Format.printf
@@ -206,7 +206,7 @@ let client (valS[@metavar]) addr =
      (port_of_address sender1)
      (ip_of_address (snd msg2))
      (port_of_address (snd msg2)); *)
-  let m2 = (client_serialization valS).dbs_deser (fst msg2) in
+  let m2 = (client_serializer valS).s_deser (fst msg2) in
   let val2 = snd m2 in
   (* Format.printf "received values: (%d, %d) \n%!" val1 val2; *)
   assert (val1 = val2);

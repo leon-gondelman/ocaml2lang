@@ -36,7 +36,7 @@ let receivefrom_all =
     let sender = snd msg in
     if sender = n then (fst msg)
     else recv n in
-  list_fold  (fun acc n -> list_append acc (Some (recv n, None))) None nodes
+  list_fold  (fun acc n -> list_append acc (list_cons (recv n) list_nil)) list_nil nodes
 
 let wait_receivefrom_all =
   fun skt nodes test ->
@@ -46,4 +46,4 @@ let wait_receivefrom_all =
     let m = fst msg in
     if (sender = n) && (test m) then m
     else recv n in
-  list_fold  (fun acc n -> list_append acc (Some (recv n, None))) None nodes
+  list_fold  (fun acc n -> list_append acc (list_cons (recv n) list_nil)) list_nil nodes

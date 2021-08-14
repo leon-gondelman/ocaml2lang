@@ -38,18 +38,18 @@ let paxos_runner () =
                       \ if <node>=p* then provide args <int>"; exit 2);
   let _ =
     match Sys.argv.(1) with
-    | "a1" -> acceptor int_serialization learners (to_saddr a1)
-    | "a2" -> acceptor int_serialization learners (to_saddr a2)
-    | "a3" -> acceptor int_serialization learners (to_saddr a3)
-    | "l1" -> learner' int_serialization acceptors (to_saddr l1) (to_saddr c)
-    | "l2" -> learner' int_serialization acceptors (to_saddr l2) (to_saddr c)
-    | "c"  -> client_pp int_serialization (to_saddr c)
+    | "a1" -> acceptor int_serializer learners (to_saddr a1)
+    | "a2" -> acceptor int_serializer learners (to_saddr a2)
+    | "a3" -> acceptor int_serializer learners (to_saddr a3)
+    | "l1" -> learner' int_serializer acceptors (to_saddr l1) (to_saddr c)
+    | "l2" -> learner' int_serializer acceptors (to_saddr l2) (to_saddr c)
+    | "c"  -> client_pp int_serializer (to_saddr c)
     | "p1" ->
         let z1 = Stdlib.int_of_string Sys.argv.(2) in
-        proposer' int_serialization acceptors (to_saddr p1) 0 2 z1
+        proposer' int_serializer acceptors (to_saddr p1) 0 2 z1
     | "p2" ->
         let z2 = Stdlib.int_of_string Sys.argv.(2) in
-        proposer' int_serialization acceptors (to_saddr p2) 1 2 z2
+        proposer' int_serializer acceptors (to_saddr p2) 1 2 z2
     | _    -> assert false
   in ()
 

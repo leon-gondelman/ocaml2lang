@@ -92,7 +92,9 @@ and value =
   | SomeV of value
   | NoneV
 
-type decl = ident * (ident list) * expr
+type argty = TyVal | TySerializer
+
+type decl = ident * ((ident * argty option) list) * expr
 
 type notation = string
 

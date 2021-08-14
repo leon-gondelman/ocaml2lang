@@ -17,7 +17,7 @@ ML_SOURCES:
 	aneris_lang/lib/serialization/serialization_base.ml
 	aneris_lang/lib/serialization/serialization.ml
 	aneris_lang/lib/vector_clock/vector_clock.ml
-	aneris_lang/test/test.ml
+	#aneris_lang/test/test.ml
 
 ML_DEPENDENCIES:
 

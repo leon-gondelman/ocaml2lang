@@ -7,9 +7,9 @@ let int_ser v = i2s v
 
 let int_deser v = unSOME (s2i v)
 
-let int_serialization : int serialization =
-  { dbs_ser   = int_ser;
-    dbs_deser = int_deser }
+let int_serializer : int serializer =
+  { s_ser   = int_ser;
+    s_deser = int_deser }
 
 let unit_ser =
   fun _u -> ""
@@ -17,9 +17,9 @@ let unit_ser =
 let unit_deser =
   fun _s -> ()
 
-let unit_serialization : unit serialization =
-  { dbs_ser   = unit_ser;
-    dbs_deser = unit_deser }
+let unit_serializer : unit serializer =
+  { s_ser   = unit_ser;
+    s_deser = unit_deser }
 
 let string_ser =
   fun x -> x
@@ -27,17 +27,17 @@ let string_ser =
 let string_deser =
   fun x -> x
 
-let string_serialization =
-  { dbs_ser   = string_ser;
-    dbs_deser = string_deser }
+let string_serializer =
+  { s_ser   = string_ser;
+    s_deser = string_deser }
 
-let prod_ser (serA[@metavar]) (serB[@metavar]) =
+let prod_ser (serA[@metavar "val"]) (serB[@metavar "val"]) =
   fun v ->
   let s1 = serA (fst v) in
   let s2 = serB (snd v) in
   (i2s (strlen s1)) ^ "_" ^ s1 ^ s2
 
-let prod_deser (deserA[@metavar]) (deserB[@metavar]) =
+let prod_deser (deserA[@metavar "val"]) (deserB[@metavar "val"]) =
   fun s ->
     match findFrom s 0 '_' with
       Some i ->
@@ -50,11 +50,11 @@ let prod_deser (deserA[@metavar]) (deserB[@metavar]) =
       (v1, v2)
     | None -> assert false
 
-let prod_serialization
-      (sA[@metavar] : 'a serialization) (sB[@metavar] : 'b serialization)
-    : ('a * 'b) serialization =
-  { dbs_ser   = prod_ser sA.dbs_ser sB.dbs_ser ;
-    dbs_deser = prod_deser sA.dbs_deser sB.dbs_deser }
+let prod_serializer
+      (sA[@metavar "serializer"] : 'a serializer) (sB[@metavar "serializer"] : 'b serializer)
+    : ('a * 'b) serializer =
+  { s_ser   = prod_ser sA.s_ser sB.s_ser ;
+    s_deser = prod_deser sA.s_deser sB.s_deser }
 
 (* TODO *)
 (* let saddr_ser s =
@@ -65,16 +65,16 @@ let saddr_deser s =
   SADDR (ip, p)
 
 let saddr_serialiazation =
-  { dbs_ser   = saddr_ser ;
-    dbs_deser = saddr_deser } *)
+  { s_ser   = saddr_ser ;
+    s_deser = saddr_deser } *)
 
-let sum_ser  (serA[@metavar]) (serB[@metavar])  =
+let sum_ser  (serA[@metavar "val"]) (serB[@metavar "val"])  =
     fun v ->
     match v with
       InjL x -> "L" ^ "_" ^ serA x
     | InjR x -> "R" ^ "_" ^ serB x
 
- let sum_deser (deserA[@metavar]) (deserB[@metavar]) =
+ let sum_deser (deserA[@metavar "val"]) (deserB[@metavar "val"]) =
    fun s ->
    let tag = substring s 0 2 in
    let rest = substring s 2 (strlen s - 2) in
@@ -86,20 +86,20 @@ let sum_ser  (serA[@metavar]) (serB[@metavar])  =
      else
        assert false
 
- let sum_serialization
-       (sA[@metavar] : 'a serialization)
-       (sB[@metavar] : 'b serialization)
-     : ('a, 'b) sumTy serialization =
-   { dbs_ser   = sum_ser sA.dbs_ser sB.dbs_ser ;
-     dbs_deser = sum_deser sA.dbs_deser sB.dbs_deser }
+ let sum_serializer
+       (sA[@metavar "serializer"] : 'a serializer)
+       (sB[@metavar "serializer"] : 'b serializer)
+     : ('a, 'b) sumTy serializer =
+   { s_ser   = sum_ser sA.s_ser sB.s_ser ;
+     s_deser = sum_deser sA.s_deser sB.s_deser }
 
-let opt_ser  (ser[@metavar])  =
+let opt_ser  (ser[@metavar "val"])  =
     fun v ->
     match v with
       None -> "L" ^ "_" ^ ""
     | Some x -> "R" ^ "_" ^ ser x
 
- let opt_deser (deser[@metavar]) =
+ let opt_deser (deser[@metavar "val"]) =
    fun s ->
    let tag = substring s 0 2 in
    let rest = substring s 2 (strlen s - 2) in
@@ -111,21 +111,21 @@ let opt_ser  (ser[@metavar])  =
      else
        assert false
 
-let opt_serialization (s[@metavar])   =
-  { dbs_ser   = opt_ser s.dbs_ser ;
-    dbs_deser = opt_deser s.dbs_deser }
+let opt_serializer (s[@metavar "serializer"])   =
+  { s_ser   = opt_ser s.s_ser ;
+    s_deser = opt_deser s.s_deser }
 
- let option_ser (ser[@metavar])  =
+ let option_ser (ser[@metavar "val"])  =
    sum_ser unit_ser ser
 
- let option_deser (deser[@metavar])  =
+ let option_deser (deser[@metavar "val"])  =
    sum_deser unit_deser deser
 
- let option_serialization (s[@metavar])   =
-  { dbs_ser   = option_ser s.dbs_ser ;
-    dbs_deser = option_deser s.dbs_deser }
+ let option_serializer (s[@metavar "serializer"])   =
+  { s_ser   = option_ser s.s_ser ;
+    s_deser = option_deser s.s_deser }
 
- let list_ser (ser[@metavar])  =
+ let list_ser (ser[@metavar "val"])  =
    let rec list_ser v =
      match v with
        Some a ->
@@ -135,7 +135,7 @@ let opt_serialization (s[@metavar])   =
      | None -> ""
    in list_ser
 
- let list_deser (deser[@metavar]) =
+ let list_deser (deser[@metavar "val"]) =
    let rec list_deser s =
      match findFrom s 0 '_' with
        Some i ->
@@ -149,7 +149,7 @@ let opt_serialization (s[@metavar])   =
      | None -> None
    in list_deser
 
- let list_serialization
-       (s[@metavar] : 'a serialization) : 'a alist serialization =
-  { dbs_ser   = list_ser s.dbs_ser ;
-    dbs_deser = list_deser s.dbs_deser }
+ let list_serializer
+       (s[@metavar "serializer"] : 'a serializer) : 'a alist serializer =
+  { s_ser   = list_ser s.s_ser ;
+    s_deser = list_deser s.s_deser }

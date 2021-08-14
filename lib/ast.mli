@@ -94,8 +94,10 @@ and value =
   | SomeV of value
   | NoneV
 
+type argty = TyVal | TySerializer
+
 (* name * coq parameters * anerislang expression *)
-type decl = ident * (ident list) * expr
+type decl = ident * ((ident * argty option) list) * expr
 
 type notation = string
 

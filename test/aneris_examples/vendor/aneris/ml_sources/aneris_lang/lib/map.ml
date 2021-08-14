@@ -1,5 +1,4 @@
 open! Lang
-open! Notation
 open List
 open Set
 

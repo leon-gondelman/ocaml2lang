@@ -82,11 +82,11 @@ let rec list_mem x l =
     | None -> None
 
 let rec list_sub i l =
-  if i <= 0 then None
+  if i <= 0 then list_nil
   else
     match l with
       Some a -> list_cons (fst a) (list_sub (i - 1) (snd a))
-    | None -> None
+    | None -> list_nil
 
 let rec list_rev_aux l acc =
   match l with
@@ -97,7 +97,7 @@ let rec list_rev_aux l acc =
       let acc' = list_cons h acc in
       list_rev_aux t acc'
 
-let list_rev l = list_rev_aux l None
+let list_rev l = list_rev_aux l list_nil
 
 let rec list_append l r =
   match l with

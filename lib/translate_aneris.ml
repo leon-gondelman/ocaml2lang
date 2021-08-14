@@ -306,6 +306,22 @@ let is_metavar info P.{attr_name = {txt; _}; attr_loc; _} =
       exit 1
     end
 
+let coqparam_argty (attrs : P.attribute list) =
+  if List.length attrs <> 1 then assert false
+  else
+    match (List.hd attrs).attr_payload with
+  | P.PStr
+      [{ pstr_desc =
+           Pstr_eval
+             ({ pexp_desc =
+                  Pexp_constant (Pconst_string (s, _)); _ }, _);
+         _ };] ->
+      if s = "val" then Some TyVal
+      else if s = "serializer" then Some TySerializer
+      else failwith "forbidden metavar type"
+  | P.PStr [] -> None
+  | _ -> assert false
+
 let rec sanity_check_params info expr =
   match expr.P.pexp_desc with
   | Pexp_fun (Nolabel, None, pat, body) ->
@@ -321,13 +337,15 @@ let rec sanity_check_params info expr =
        end
   | _ -> ()
 
-let rec split_coqparams info (acc : ident list) expr =
+let rec split_coqparams info (acc : (ident * argty option) list) expr =
     match expr.P.pexp_desc with
   | Pexp_fun (Nolabel, None, pat, body) ->
      let pname = name_of_pat info pat in
      let attrs = attrs_of_pat info pat in
-     if List.exists (is_metavar info) attrs
-     then split_coqparams info (pname :: acc) body
+      if List.exists (is_metavar info) attrs
+     then
+       let tyopt = coqparam_argty attrs in
+       split_coqparams info ((pname, tyopt) :: acc) body
      else
        begin sanity_check_params info expr; (List.rev acc, expr) end
   | _ ->
@@ -349,10 +367,10 @@ let rec value_binding_notbuiltin
              info.info_fname pvb_loc.loc_start.pos_lnum id; exit 1
       end
     with Not_found -> Hashtbl.add info.info_gvars id b in
-  let remove_info_gvar id = Hashtbl.remove info.info_gvars id in
+  let remove_info_gvar (id, _) = Hashtbl.remove info.info_gvars id in
   let id = name_of_pat info pvb_pat in
   let (mvars, body) = split_coqparams info [] pvb_expr in
-  List.iter (fun id -> add_info_gvar id BNone) mvars;
+  List.iter (fun (id, _) -> add_info_gvar id BNone) mvars;
   let expr =
     if isrec
     then
@@ -844,6 +862,12 @@ and structure_attribute info a =
                     \%s is not supported.\n" info.info_fname a.attr_name.txt;
                   exit 1)
         end
+    | PStr [] -> (Format.eprintf
+                    "\nIn file %s at line %d:\n attribute with empty payload \
+                     \attribute %s is not supported.\n"
+                    info.info_fname
+                    a.attr_name.loc.loc_start.pos_lnum a.attr_name.txt;
+            exit 1)
     | _ -> (Format.eprintf
                     "\nIn file %s at line %d:\n attribute payload type of the \
                      \attribute %s is not supported.\n"

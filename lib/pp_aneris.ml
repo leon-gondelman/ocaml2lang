@@ -112,7 +112,13 @@ and pp_expr ?(paren=false) fmt = function
   | Val v -> pp_val fmt v
   | Var v -> pp_var fmt v
   | Rec (f, x, e) ->
-     pp_rec fmt paren f x e
+      pp_rec fmt paren f x e
+  (* List singleton *)
+  | App
+      (App
+         (Var (Vgvar (Gvar "list_cons")), e1),
+       (Var (Vgvar (Gvar "list_nil")))) ->
+     fprintf fmt "@[<hov>[%a]@]" (pp_expr ~paren) e1
   (* List cons *)
   | App (App (Var (Vgvar (Gvar "list_cons")), e1), e2) ->
      fprintf fmt (protect_on paren "@[<hov>%a :: %a@]")
@@ -253,7 +259,7 @@ and pp_expr ?(paren=false) fmt = function
      fprintf fmt "{|@\n%a@\n|}"
        (pp_print_list ~pp_sep:pp_newline pp_record_field_def) iel
   | EField (e, f) ->
-     fprintf fmt (protect_on paren "%a.(%s)") (pp_expr  ~paren:true) e f
+      fprintf fmt ((*protect_on paren*) "%a.(%s)") (pp_expr  ~paren:true) e f
   | CAS  _ -> assert false
   | Start  _ -> assert false
 
@@ -277,24 +283,30 @@ and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
         | _ -> assert false end
   | _ -> assert false (* TODO *)
 
+let pp_typed_arg fmt (id, tyopt) =
+  match tyopt with
+  | None ->  pp_print_string fmt id
+  | Some TyVal ->  fprintf fmt "(%s : val)" id
+  | Some TySerializer ->  fprintf fmt "(%s : serializer)" id
+
 (* NB: currently cannot distinguish between expr and coq record, since
    no type info is available from ppx *)
 let pp_decl_lang_other fmt (id, mvars, expr) =
   fprintf fmt "@[<hov 2>Definition %s @[%a@]:=@ @[%a@].@]"
     id
-    (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
+    (pp_print_list_last_space ~pp_sep:pp_space pp_typed_arg) mvars
     (pp_expr ~paren:false) expr
 
 let pp_decl_lang_val fmt (id, mvars, expr) =
-  fprintf fmt "@[<hov 2>Definition %s @[%a@]: base_lang.val :=@ @[%a@].@]"
+  fprintf fmt "@[<hov 2>Definition %s @[%a@]: val :=@ @[%a@].@]"
     id
-    (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
+    (pp_print_list_last_space ~pp_sep:pp_space pp_typed_arg) mvars
     (pp_expr ~paren:false) expr
 
 let pp_decl_coq_record fmt (id, mvars, expr) =
   fprintf fmt "@[<hov 2>Definition %s @[%a@]:=@ @[%a@].@]"
     id
-    (pp_print_list_last_space ~pp_sep:pp_space pp_print_string) mvars
+    (pp_print_list_last_space ~pp_sep:pp_space pp_typed_arg) mvars
     (pp_expr ~paren:false) expr
 
 let pp_decl fmt (id, mvars, expr) =
