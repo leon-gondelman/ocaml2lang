@@ -1,16 +1,12 @@
-open! Lang
-open! Notation
-open! List
-open! Set
-open! Map
-open Network
-open! Serialization_type
-open Serialization
+open Ast
+open List_code
+open Serialization_code
 open Paxos_code
 open Unix
 
-let list_to_alist l : 'a alist =
-  Stdlib.List.fold_left (fun acc x -> list_cons x acc) list_nil l
+let list_to_alist l =
+  Stdlib.List.fold_left
+    (fun acc x -> list_cons x acc) list_nil l
 
 
 

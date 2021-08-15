@@ -1,9 +1,8 @@
-open! Lang
-open! Notation
-open List
-open Set
-open Map
-open Network_util
+open Ast
+open List_code
+open Set_code
+open Map_code
+open Network_util_code
 
 
 let receivefrom_nodup rcvlog skt =

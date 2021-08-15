@@ -7,22 +7,19 @@ IMPORT_PATH_PREFIX:
 
 ML_SOURCES:
 
-	aneris_lang/lib/network_util.ml
-	aneris_lang/lib/list.ml
-	aneris_lang/lib/set.ml
-	aneris_lang/lib/map.ml
-	aneris_lang/lib/bag.ml
-	aneris_lang/lib/nodup.ml
-	aneris_lang/lib/coin_flip.ml
-	aneris_lang/lib/serialization/serialization_base.ml
-	aneris_lang/lib/serialization/serialization.ml
-	aneris_lang/lib/vector_clock/vector_clock.ml
-	#aneris_lang/test/test.ml
+	aneris_lang/lib/network_util_code.ml
+	aneris_lang/lib/list_code.ml
+	aneris_lang/lib/set_code.ml
+	aneris_lang/lib/map_code.ml
+	aneris_lang/lib/bag_code.ml
+	aneris_lang/lib/nodup_code.ml
+	aneris_lang/lib/coin_flip_code.ml
+	aneris_lang/lib/serialization/serialization_code.ml
+	aneris_lang/lib/vector_clock/vector_clock_code.ml
 
 ML_DEPENDENCIES:
 
         aneris_lang
-	aneris_lang/test
 	aneris_lang/lib
         aneris_lang/lib/serialization
 	aneris_lang/lib/vector_clock

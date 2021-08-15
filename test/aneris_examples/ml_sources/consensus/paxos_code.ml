@@ -1,12 +1,9 @@
-open! Lang
-open! Notation
-open! List
-open! Set
-open! Map
-open Network_util
-open! Serialization_type
-open Serialization
-open Network
+open! Ast
+open! List_code
+open! Set_code
+open! Map_code
+open Network_util_code
+open Serialization_code
 let ballot_serializer = int_serializer
 
 (* either [prepare(b)] or [accept(b, v)] *)

@@ -1,6 +1,4 @@
-open! Lang
-open! Notation
-open Lock
+open! Ast
 
 let newbag () =
   let l = ref None in

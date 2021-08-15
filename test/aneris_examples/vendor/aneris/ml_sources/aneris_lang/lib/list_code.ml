@@ -1,13 +1,13 @@
-open! Lang
+open! Ast
 
 type 'a alist = ('a * 'a alist) option
 
-let list_nil = None
+let list_nil : 'a alist = None
 
 [@@@NOTATION {|Notation "[ ]" := (list_nil) (format "[ ]") : expr_scope.|}]
 
 
-let list_cons elem list = Some (elem, list)
+let list_cons (elem : 'a) (list : 'a alist) : 'a alist = Some (elem, list)
 
 [@@@NOTATION
   {|Infix "::" := list_cons (at level 60, right associativity) : expr_scope.|}]

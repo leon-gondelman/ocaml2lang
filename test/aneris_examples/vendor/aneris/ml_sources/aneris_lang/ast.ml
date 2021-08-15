@@ -1,11 +1,42 @@
-(* #directory "+threads";;
- #load "unix.cma";;
- #load "threads.cma";; *)
-
 open Unix
-open Network
 
 type ('a, 'b) sumTy = InjL of 'a | InjR of 'b
+
+type protocol = IPPROTO_UDP
+
+type saddr = SADDR of (string * int)
+
+let num_of_protocol = function
+  | IPPROTO_UDP -> 0
+
+let to_saddr s =
+  match s with
+    ADDR_UNIX _ -> assert false
+  | ADDR_INET (ip, p) -> SADDR (string_of_inet_addr ip, p)
+
+let of_saddr s =
+  match s with
+  | SADDR (ip, p) -> ADDR_INET (inet_addr_of_string ip, p)
+
+
+let ip_of_sockaddr s =
+  match s with
+    ADDR_UNIX _ -> assert false
+  | ADDR_INET (ip, _) -> ip
+
+let port_of_sockaddr s =
+  match s with
+    ADDR_UNIX _ -> assert false
+  | ADDR_INET (_, p) -> p
+
+let[@builtin "ip_of_address"] ip_of_address s =
+  match s with
+  | SADDR (ip, _) -> ip
+
+let[@builtin "port_of_address"] port_of_address s =
+  match s with
+  | SADDR (_, p) -> p
+
 
 let[@builtinAtom "MakeAddress"] makeAddress (ip : string) (port : int) =
   ADDR_INET (inet_addr_of_string ip, port)
@@ -75,3 +106,17 @@ let[@builtinAtom "i2s"] i2s = string_of_int
 let[@builtinAtom "s2i"] s2i = int_of_string_opt
 
 let [@builtinAtom "RefLbl"] ref_lbl _s e = ref e
+
+
+let[@builtinAtom "NewLock"] newlock = fun () -> Mutex.create ()
+let[@builtinAtom "TryAcquire"] try_acquire = fun l -> Mutex.try_lock l
+let[@builtinAtom "Acquire"] acquire =
+  let rec acquire l = if try_acquire l then () else acquire l
+  in acquire
+
+let[@builtinAtom "Release"] release = fun l -> Mutex.unlock l
+
+
+type 'a serializer =
+  { s_ser : 'a -> string;
+    s_deser : string -> 'a}

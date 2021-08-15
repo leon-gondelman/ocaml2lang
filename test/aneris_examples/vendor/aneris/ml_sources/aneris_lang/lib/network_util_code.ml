@@ -1,8 +1,6 @@
-open! Network
-open! Lang
-open! Notation
-open List
-open Set
+open Ast
+open List_code
+open Set_code
 
 let unSOME o = match o with
     None -> assert false
@@ -47,3 +45,15 @@ let wait_receivefrom_all =
     if (sender = n) && (test m) then m
     else recv n in
   list_fold  (fun acc n -> list_append acc (list_cons (recv n) list_nil)) list_nil nodes
+
+let tag_of_message msg =
+  match findFrom msg 0 '_' with
+    Some i  -> substring msg 0 i
+  | None -> "UNDEFINED"
+
+let value_of_message msg =
+  match findFrom msg 0 '_' with
+    Some i  -> let length = strlen msg in
+               let start  = i + 1 in
+               substring msg start (length - start)
+  | None -> "UNDEFINED"

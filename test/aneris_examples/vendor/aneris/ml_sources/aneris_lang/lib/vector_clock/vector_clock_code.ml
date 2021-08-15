@@ -1,7 +1,7 @@
-open! Lang
-open! Notation
-open Network_util
-open List
+open! Ast
+open Network_util_code
+open List_code
+open! Serialization_code
 
 let rec vect_make len init =
   if len = 0 then list_nil
@@ -15,7 +15,7 @@ let rec vect_update vec i v =
     Some a ->
       if i = 0 then list_cons v (list_tail vec)
       else list_cons (fst a) (vect_update (snd a) (i - 1) v)
-  | None -> None
+  | None -> list_nil
 
 
 let vect_inc vec i =
@@ -61,3 +61,9 @@ let rec vect_deserialize s =
         vect_deserialize (substring s start (length - start)) in
       list_cons x tail
   | None -> list_nil
+
+
+let vect_serializer =
+  { s_ser = vect_serialize;
+    s_deser = vect_deserialize;
+  }

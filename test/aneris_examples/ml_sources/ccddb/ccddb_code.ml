@@ -1,12 +1,9 @@
-open! Lang
-open! Network
-open! Notation
-open List
-open! Lock
-open! Network_util
-open! Vector_clock
-open! Serialization
-open Map
+open Ast
+open List_code
+open Network_util_code
+open Vector_clock_code
+open Serialization_code
+open Map_code
 
 (* TODO: remove this line later ! *)
 [@@@NOTATION {|Import Network.|}]

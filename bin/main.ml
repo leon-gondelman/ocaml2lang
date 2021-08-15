@@ -94,7 +94,7 @@ let pp_generated _finname fname =
   close_out cout_gen
 
 let timestamp () =
-  let r = Unix.localtime (Unix.time ()) in
+  let r = Unix.gmtime (Unix.time ()) in
   String.concat ""
     [string_of_int (r.tm_year + 1900);
      "/";
@@ -107,7 +107,7 @@ let timestamp () =
      string_of_int  r.tm_min;
      "m";
      string_of_int  r.tm_sec;
-     "s"]
+     "s (UTC)";]
 
 let pp_program finname fname prog =
   if Sys.file_exists fname then
