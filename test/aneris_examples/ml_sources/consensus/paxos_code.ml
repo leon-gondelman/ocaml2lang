@@ -16,7 +16,7 @@ let acceptor_serializer (value_serializer[@metavar]) =
    possibly already accepted value and its ballot *)
 let proposer_serializer (value_serializer[@metavar]) =
   prod_serializer ballot_serializer
-    (opt_serializer
+    (option_serializer
        (prod_serializer ballot_serializer
           value_serializer))
 

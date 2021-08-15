@@ -92,13 +92,13 @@ let sum_ser  (serA[@metavar "val"]) (serB[@metavar "val"])  =
    { s_ser   = sum_ser sA.s_ser sB.s_ser ;
      s_deser = sum_deser sA.s_deser sB.s_deser }
 
-let opt_ser  (ser[@metavar "val"])  =
+let option_ser  (ser[@metavar "val"])  =
     fun v ->
     match v with
       None -> "L" ^ "_" ^ ""
     | Some x -> "R" ^ "_" ^ ser x
 
- let opt_deser (deser[@metavar "val"]) =
+ let option_deser (deser[@metavar "val"]) =
    fun s ->
    let tag = substring s 0 2 in
    let rest = substring s 2 (strlen s - 2) in
@@ -110,17 +110,7 @@ let opt_ser  (ser[@metavar "val"])  =
      else
        assert false
 
-let opt_serializer (s[@metavar "serializer"])   =
-  { s_ser   = opt_ser s.s_ser ;
-    s_deser = opt_deser s.s_deser }
-
- let option_ser (ser[@metavar "val"])  =
-   sum_ser unit_ser ser
-
- let option_deser (deser[@metavar "val"])  =
-   sum_deser unit_deser deser
-
- let option_serializer (s[@metavar "serializer"])   =
+let option_serializer (s[@metavar "serializer"]) =
   { s_ser   = option_ser s.s_ser ;
     s_deser = option_deser s.s_deser }
 
