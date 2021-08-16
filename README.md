@@ -27,3 +27,7 @@ which will produce and executable `o2a`. After installation succeeds, you can tr
 How to use
 --------------
 TODO
+
+Credits
+--------------
+Special thanks to Armaël Guéneau for his kind help and explanations.
