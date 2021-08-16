@@ -8,4 +8,4 @@
   (name ocaml2lang)
   (libraries ocaml-compiler-libs.common)
   (inline_tests)
-  (preprocess (pps ppx_expect)))
+  )

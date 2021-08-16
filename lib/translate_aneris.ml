@@ -281,7 +281,7 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
       [{ pstr_desc =
            Pstr_eval
              ({ pexp_desc =
-                  Pexp_constant (Pconst_string (spec, _)); _ }, _);
+                  Pexp_constant (Pconst_string (spec,_,_)); _ }, _);
          _ };] -> spec
     | _ -> assert false in
   let get_builtin P.{attr_name = {txt; _}; attr_payload; _} = match txt with
@@ -314,7 +314,7 @@ let coqparam_argty (attrs : P.attribute list) =
       [{ pstr_desc =
            Pstr_eval
              ({ pexp_desc =
-                  Pexp_constant (Pconst_string (s, _)); _ }, _);
+                  Pexp_constant (Pconst_string (s,_,_)); _ }, _);
          _ };] ->
       if s = "val" then Some TyVal
       else if s = "serializer" then Some TySerializer
@@ -707,7 +707,7 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
 
 and constant = function
     Pconst_integer (t, _) -> LitInt (int_of_string t)
-  | Pconst_string (s, _) -> LitString s
+  | Pconst_string (s,_,_) -> LitString s
   | Pconst_char c -> LitString (Char.escaped c)
   | Pconst_float _ -> assert false (* not implemented in AnerisLang *)
 
@@ -855,7 +855,7 @@ and structure_attribute info a =
         begin match s.pstr_desc with
           | Pstr_eval
               ({pexp_desc =
-                  Pexp_constant (Pconst_string (s, _)); _}, _)
+                  Pexp_constant (Pconst_string (s, _, _)); _}, _)
             -> s
           | _ -> (Format.eprintf
                     "\nIn file %s:\n attribute payload type of the attribute\
