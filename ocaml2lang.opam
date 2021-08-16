@@ -20,6 +20,7 @@ url {
 # dev-repo: "https://github.com/leon-gondelman/ocaml2lang"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 depends: [
    "dune" {>= "2.4.0"}

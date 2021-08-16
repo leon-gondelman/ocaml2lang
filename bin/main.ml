@@ -9,6 +9,8 @@ type bak = Backup | Rewrite
 let backup = ref Backup
 let gen = ref false
 let cleanall = ref false
+let checkoutall = ref false
+
 let src_queue = Queue.create ()
 
 let usage_msg = "ocaml2aneris [options]"
@@ -20,7 +22,9 @@ let spec = [ "--backup", Arg.Unit (fun () -> backup := Backup),
              "--clean", Arg.Unit (fun () -> gen := true),
              "clean generated .v files";
              "--clean-all", Arg.Unit (fun () -> gen := true; cleanall := true),
-             "clean generated .v .v.bak files and _generated";]
+             "clean generated .v .v.bak files and _generated";
+             "--checkout-all", Arg.Unit (fun () -> gen := true; checkoutall := true),
+             "checkout generated .v files and remove _generated";]
 
 let usage () = Arg.usage spec usage_msg; exit 1
 
@@ -31,6 +35,8 @@ let () = Arg.parse spec set_file usage_msg
 let backup = !backup
 let clean_gen = !gen
 let clean_all = !cleanall
+let checkout_all = !checkoutall
+
 let ml_project =
   let cin = open_in "_OCamlProject" in
   let lb = Lexing.from_channel cin in
@@ -167,10 +173,19 @@ let () =
       try while true do
           let fname = input_line cin in
           begin
-            try
-              Sys.remove fname;
-              Format.eprintf "Removed: %s@." fname
-            with Sys_error _ -> () end;
+            if checkout_all
+            then
+              try
+                ignore(Sys.command ("git checkout " ^ fname));
+                Format.eprintf "checked out: %s@." fname
+              with Sys_error _ -> Format.eprintf "(error): NOT checked out: %s@." fname
+            else
+              begin
+                try
+                  Sys.remove fname;
+                  Format.eprintf "Removed: %s@." fname
+                with Sys_error _ -> () end
+          end;
           begin
             if clean_all
             then
@@ -183,7 +198,7 @@ let () =
       with End_of_file ->
         close_in cin;
         begin
-          if clean_all
+          if clean_all || checkout_all
           then
             try
               Sys.remove fgen;

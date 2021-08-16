@@ -1,3 +1,5 @@
 (executable
   (name main)
-  (libraries unix ocaml-compiler-libs.common ocaml2lang))
+  (public_name o2a)
+  (libraries unix ocaml-compiler-libs.common ocaml2lang)
+  (package ocaml2lang))
