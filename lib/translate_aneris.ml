@@ -858,19 +858,19 @@ and structure_attribute info a =
                   Pexp_constant (Pconst_string (s, _)); _}, _)
             -> s
           | _ -> (Format.eprintf
-                    "\nIn file %s:\n attribute payload type of the attribute \
-                    \%s is not supported.\n" info.info_fname a.attr_name.txt;
+                    "\nIn file %s:\n attribute payload type of the attribute\
+                    \ %s is not supported.\n" info.info_fname a.attr_name.txt;
                   exit 1)
         end
     | PStr [] -> (Format.eprintf
-                    "\nIn file %s at line %d:\n attribute with empty payload \
-                     \attribute %s is not supported.\n"
+                    "\nIn file %s at line %d:\n attribute with empty payload\
+                     \ attribute %s is not supported.\n"
                     info.info_fname
                     a.attr_name.loc.loc_start.pos_lnum a.attr_name.txt;
             exit 1)
     | _ -> (Format.eprintf
                     "\nIn file %s at line %d:\n attribute payload type of the \
-                     \attribute %s is not supported.\n"
+                     \ attribute %s is not supported.\n"
                     info.info_fname
                     a.attr_name.loc.loc_start.pos_lnum a.attr_name.txt;
             exit 1) in
