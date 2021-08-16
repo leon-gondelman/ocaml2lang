@@ -5,10 +5,6 @@ open Vector_clock_code
 open Serialization_code
 open Map_code
 
-(* TODO: remove this line later ! *)
-[@@@NOTATION {|Import Network.|}]
-
-
 (* We follow the following variable naming convention:
 
      - [db]    : a reference to the local database
