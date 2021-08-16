@@ -197,14 +197,6 @@ let () =
         done
       with End_of_file ->
         close_in cin;
-        begin
-          if clean_all || checkout_all
-          then
-            try
-              Sys.remove fgen;
-              Format.eprintf "Removed: %s@." fgen
-            with Sys_error _ -> ()
-        end
     end end
   else
     let root = ml_project.ml_root in
