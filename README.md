@@ -4,7 +4,7 @@ Compiler from OCaml sources to AnerisLang
 
 How to install
 --------------
-First, start by cloning the the project:
+First, start by cloning the project:
 ```
   $ git clone https://github.com/leon-gondelman/ocaml2lang
 ```
