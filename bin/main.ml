@@ -24,7 +24,7 @@ let spec = [ "--backup", Arg.Unit (fun () -> backup := Backup),
              "--clean-all", Arg.Unit (fun () -> gen := true; cleanall := true),
              "clean generated .v .v.bak files and _generated";
              "--checkout-all", Arg.Unit (fun () -> gen := true; checkoutall := true),
-             "checkout generated .v files and remove _generated";]
+             "checkout generated .v files (assuming those are versioned with git)";]
 
 let usage () = Arg.usage spec usage_msg; exit 1
 
