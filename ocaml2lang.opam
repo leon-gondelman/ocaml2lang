@@ -17,12 +17,12 @@ url {
     "sha512=7205daec89dc71439d9f122a143a95528469a6b695df7abc98583495750cbabb19840c57fc5047f73002af111562ea6c9fae6f1ab02d8078866ac96f6fd7b253"
   ]
 }
-dev-repo: "https://github.com/leon-gondelman/ocaml2lang.git"
+dev-repo: "git+https://github.com/leon-gondelman/ocaml2lang.git"
 build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 depends: [
-   "dune" {>= "2.9.0"}
-  "ocaml" {>= "4.12"}
+   "dune"  {>= "2.9.0"}
+   "ocaml" {>= "4.12"}
 ]
