@@ -6,7 +6,7 @@ How to install
 --------------
 Pin the `ocaml2lang` package:
 ```
-  $ opam pin git+https://github.com/leon-gondelman/ocaml2lang
+  opam pin git+https://github.com/leon-gondelman/ocaml2lang
 ```
 
 This will produce an executable `o2a`. After installation succeeds, you can try `o2a` by doing
