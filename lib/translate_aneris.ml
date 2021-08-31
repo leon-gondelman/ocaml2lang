@@ -351,12 +351,6 @@ let rec split_coqparams info (acc : (ident * argty option) list) expr =
   | _ ->
      begin sanity_check_params info expr; (List.rev acc, expr) end
 
-let synth_expression desc =
-  { P.pexp_desc = desc;
-    P.pexp_loc = Location.none;
-    P.pexp_loc_stack = [];
-    P.pexp_attributes = [] }
-
 let rec value_binding_notbuiltin
           ~isrec
           (info : info)
@@ -605,10 +599,9 @@ and expression info expr =
      let expr3 = expression info e3 in
      If (expr1, expr2, expr3)
   | Pexp_ifthenelse (e1, e2, None) ->
-     let unit_expr = synth_expression (
-       Pexp_construct ({txt = Lident "()"; loc = Location.none}, None)) in
-     let expr' = {expr with P.pexp_desc = Pexp_ifthenelse (e1, e2, Some unit_expr)} in
-     expression info expr'
+     let expr1 = expression info e1 in
+     let expr2 = expression info e2 in
+     If (expr1, expr2, Val (LitV LitUnit))
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
       let (id, _, expr) =
           value_binding_notbuiltin ~isrec:false info val_bind in
