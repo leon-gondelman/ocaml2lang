@@ -598,8 +598,10 @@ and expression info expr =
      let expr2 = expression info e2 in
      let expr3 = expression info e3 in
      If (expr1, expr2, expr3)
-  | Pexp_ifthenelse (_, _, None) ->
-     assert false
+  | Pexp_ifthenelse (e1, e2, None) ->
+     let expr1 = expression info e1 in
+     let expr2 = expression info e2 in
+     If (expr1, expr2, Val (LitV LitUnit))
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
       let (id, _, expr) =
           value_binding_notbuiltin ~isrec:false info val_bind in
