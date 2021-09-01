@@ -39,7 +39,9 @@ module Read = struct
     let lb = Lexing.from_channel cin in
     let str_program = Parser.implementation Lexer.token lb in
     let str_builtin = Hashtbl.mem builtin fname in
-    mk_structure ~str_builtin str_program fname
+    let res = mk_structure ~str_builtin str_program fname in
+    close_in cin;
+    res
 
 end
 
