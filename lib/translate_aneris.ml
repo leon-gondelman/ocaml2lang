@@ -136,8 +136,8 @@ let node_from_builtin s args = match s, args with
      Substring (expr1, expr2, expr3)
   | "FindFrom", [expr1; expr2; expr3] ->
      FindFrom (expr1, expr2, expr3)
-  | "Fork", [expr] ->
-     Fork expr
+  | "Fork", [f; e] ->
+     Fork (App (f, e))
   | "RefLbl", [Var (Vlvar expr1); expr2] ->
      Alloc ((Some expr1), expr2)
   | "RefLbl", [Val (LitV LitString s); expr2] ->
