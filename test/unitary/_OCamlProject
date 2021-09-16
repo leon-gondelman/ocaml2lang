@@ -1,0 +1,11 @@
+OUTPUT_ROOT:
+	ml_sources theories
+
+IMPORT_PATH_PREFIX:
+
+	ml_sources test
+
+ML_SOURCES:
+	tuple/tuple.ml
+
+ML_DEPENDENCIES:

@@ -2,5 +2,5 @@ open! Ast
 
 let coin_flip () =
   let l = ref true in
-  fork (l := false);
+  fork (fun () -> l := false) ();
   !l

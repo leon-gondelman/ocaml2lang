@@ -127,7 +127,7 @@ let ccddb_init (val_ser[@metavar]) (val_deser[@metavar]) addrlst i =
   let socket_handler = socket PF_INET SOCK_DGRAM IPPROTO_UDP in
   let addr = unSOME (list_nth addrlst i) in
   socketBind socket_handler addr;
-  fork (store_apply db t lock inQueue i);
-  fork (send_thread val_ser i socket_handler lock addrlst outQueue);
-  fork (recv_thread val_deser socket_handler lock inQueue);
+  fork (store_apply db t lock inQueue) i;
+  fork (send_thread val_ser i socket_handler lock addrlst) outQueue;
+  fork (recv_thread val_deser socket_handler lock) inQueue;
   (store_read db lock, store_write db t outQueue lock i)

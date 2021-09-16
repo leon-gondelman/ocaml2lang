@@ -80,8 +80,8 @@ let[@builtinAtom "SetReceiveTimeout"] setReceiveTimeout sh n m =
   let fm = makeDecimal m in
   Unix.setsockopt_float sh SO_RCVTIMEO (fn +. fm)
 
-let[@builtinAtom "Fork"] fork e =
-  let _ = Thread.create (fun () -> e) () in ()
+let[@builtinAtom "Fork"] fork f e =
+  let _ = Thread.create f e in ()
 
 let[@builtinAtom "FindFrom"] findFrom e0 e1 e2 =
   String.index_from_opt e0 e1 e2

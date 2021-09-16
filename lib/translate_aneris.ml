@@ -119,7 +119,7 @@ let add_info_lvar info id loc =
 let remove_info_lvar info id = Hashtbl.remove info.info_lvars id
 
 (* To be completed with all possible builtin translation *)
-let node_from_builtin s args = match s, args with
+let node_from_builtin f s args = match s, args with
   | "MakeAddress", [expr1; expr2] ->
      MakeAddress (expr1, expr2)
   | "NewSocket", [expr1; expr2; expr3] ->
@@ -154,7 +154,11 @@ let node_from_builtin s args = match s, args with
      EAcquire expr
   | "Release", [expr] ->
      ERelease expr
-  | _ -> assert false
+  | s, _ ->
+      Format.eprintf
+      "\nIn file %s \n  the built-in %s is not supported.\n"
+     f s;
+    exit 1
 
 let node_from_unop s args = match s, args with
   | "StringLength", [expr] ->
@@ -480,7 +484,7 @@ and expression info expr =
     | Var (Vgvar (Gvar id)) ->
        begin match find_builtin id with (* this should not raise Not_found *)
        | BNone -> List.fold_left mk_app expr1 exprl
-       | BBuiltin s -> node_from_builtin s exprl
+       | BBuiltin s -> node_from_builtin info.info_fname s exprl
        | BUnOp s -> node_from_unop s exprl end
     | _ -> List.fold_left mk_app expr1 exprl in
   match expr.P.pexp_desc with
