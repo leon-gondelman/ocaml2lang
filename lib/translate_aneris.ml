@@ -121,7 +121,9 @@ let remove_info_lvar info id = Hashtbl.remove info.info_lvars id
 (* To be completed with all possible builtin translation *)
 let node_from_builtin f s args = match s, args with
   | "MakeAddress", [expr1; expr2] ->
-     MakeAddress (expr1, expr2)
+      MakeAddress (expr1, expr2)
+  | "GetAddrInfo", [expr] ->
+      GetAddrInfo expr
   | "NewSocket", [expr1; expr2; expr3] ->
      NewSocket (expr1, expr2, expr3)
   | "SocketBind", [expr1; expr2] ->
@@ -244,7 +246,9 @@ let rec normalize_expr e0 = match e0 with
     | Store (e1, e2)  ->
        Store (normalize_expr e1, normalize_expr e2)
     | MakeAddress (e1, e2)  ->
-       MakeAddress (normalize_expr e1, normalize_expr e2)
+        MakeAddress (normalize_expr e1, normalize_expr e2)
+    | GetAddrInfo e ->
+        GetAddrInfo (normalize_expr e)
     | NewSocket (e1, e2, e3) ->
        NewSocket (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | SocketBind  (e1, e2) ->

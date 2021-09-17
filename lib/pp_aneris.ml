@@ -221,6 +221,9 @@ and pp_expr ?(paren=false) fmt = function
   | MakeAddress  (e1, e2) ->
      fprintf fmt (protect_on paren "MakeAddress %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+  | GetAddrInfo e ->
+     fprintf fmt (protect_on paren "GetAddressInfo %a")
+       (pp_expr ~paren:true) e
   | NewSocket  (e1, e2, e3) ->
       fprintf fmt (protect_on paren "NewSocket %a %a %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2

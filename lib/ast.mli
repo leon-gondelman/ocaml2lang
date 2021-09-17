@@ -62,6 +62,7 @@ type expr =
   | Load of expr
   | Store of expr * expr
   | MakeAddress of expr * expr
+  | GetAddrInfo of expr
   | NewSocket of expr * expr * expr
   | SocketBind of expr * expr
   | SendTo of expr * expr * expr
