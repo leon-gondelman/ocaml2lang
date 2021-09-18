@@ -89,15 +89,15 @@ let is_builtin info = info.info_builtin
 let mk_lamb binder expr =
   Rec (BAnon, binder, expr)
 
-(* Extracts ident from OCaml patterns (fun names, formal args, etc) *)
-let rec name_of_pat info pat = match pat.P.ppat_desc with
+
+let rec decl_name_of_pat info pat = match pat.P.ppat_desc with
   | Ppat_var s -> s.txt
-  | Ppat_constraint (p, _) -> name_of_pat info p
+  | Ppat_constraint (p, _) -> decl_name_of_pat info p
   | Ppat_construct ({txt = Lident "()"; _}, _) -> "<>"
   | _ ->
       Format.eprintf
              "\nIn file %s at line %d:\n  this pattern\
-              \ is not supported.\n"
+              \ is not supported for global declarations.\n"
              info.info_fname pat.ppat_loc.loc_start.pos_lnum;
            exit 1
 
@@ -106,6 +106,33 @@ let rec attrs_of_pat info pat = match pat.P.ppat_desc with
   | Ppat_constraint (p, _) -> attrs_of_pat info p
   | _ -> []
 
+
+(* Extracts ident from OCaml patterns (fun names, formal args, etc) *)
+let rec name_of_pat info pat = match pat.P.ppat_desc with
+  | Ppat_var s -> s.txt
+  | Ppat_constraint (p, _) -> name_of_pat info p
+  | Ppat_construct ({txt = Lident "()"; _}, _) -> "<>"
+  | Ppat_alias (_, s) -> s.txt
+  | _ ->
+      Format.eprintf
+             "\nIn file %s at line %d:\n  this pattern\
+              \ is not supported.\n"
+             info.info_fname pat.ppat_loc.loc_start.pos_lnum;
+      exit 1
+
+let transform info r pat =
+  let rec aux path p = match p.P.ppat_desc with
+    | Ppat_var s -> [s.txt, path (Var (Vlvar r))]
+    | Ppat_constraint (p, _) -> [name_of_pat info p, path (Var (Vlvar r))]
+    | Ppat_construct ({txt = Lident "()"; _}, _) -> ["<>", path (Var (Vlvar r))]
+    | Ppat_tuple [p1; p2] ->
+        let fl = aux (fun x -> Fst (path x)) p1 in
+        let sl = aux (fun x -> Snd (path x)) p2 in
+        fl @ sl
+    | Ppat_tuple l when List.length l <> 2 ->
+        failwith "tuples that are not pairs are not supported"
+    | _ -> failwith "pattern not supported (not pair)"
+  in aux (fun x -> x) pat
 
 let add_info_lvar info id loc =
     begin match Hashtbl.find_opt info.info_gvars id with
@@ -301,7 +328,7 @@ let value_binding_bultin info P.{pvb_pat; pvb_attributes; _} =
   begin try
       let attr = List.find is_builtin pvb_attributes in
       let builtin = get_builtin attr in
-      let id = name_of_pat info pvb_pat in
+      let id = decl_name_of_pat info pvb_pat in
       add_known info id builtin;
     with Not_found -> () end;
   []
@@ -350,7 +377,7 @@ let rec sanity_check_params info expr =
 let rec split_coqparams info (acc : (ident * argty option) list) expr =
     match expr.P.pexp_desc with
   | Pexp_fun (Nolabel, None, pat, body) ->
-     let pname = name_of_pat info pat in
+     let pname = decl_name_of_pat info pat in
      let attrs = attrs_of_pat info pat in
       if List.exists (is_metavar info) attrs
      then
@@ -361,7 +388,64 @@ let rec split_coqparams info (acc : (ident * argty option) list) expr =
   | _ ->
      begin sanity_check_params info expr; (List.rev acc, expr) end
 
-let rec value_binding_notbuiltin
+
+(* Extracts ident from OCaml patterns (fun names, formal args, etc) *)
+let is_aliased_tuple_of_pat pat = match pat.P.ppat_desc with
+  | Ppat_alias ({ ppat_desc = Ppat_tuple _; _} as p, s)  -> Some (s.txt, p)
+  | _ -> None
+
+let rec inline_ptuple_as_expr info path_list (body : P.expression) =
+  let rec aux fexpr l = match l with
+    | [] ->
+        fexpr body
+    | (var, path) :: tl ->
+        let fexpr' e = App (mk_lamb (BNamed var) (fexpr e), path) in
+        aux fexpr' tl
+  in aux (fun e -> expression info e) (List.rev path_list)
+
+and letin_notbuiltin
+          ~isrec
+          (info : info)
+          ({pvb_pat; pvb_expr; pvb_loc; _ }: P.value_binding)
+          (e2 : P.expression) =
+  match is_aliased_tuple_of_pat pvb_pat with
+  | None ->
+      if isrec
+      then
+        begin
+          let fun_name = name_of_pat info pvb_pat in
+          add_info_lvar info fun_name pvb_loc;
+          let body = expression info pvb_expr in
+          let expr2 = expression info e2 in
+          remove_info_lvar info fun_name;
+          let arg, body = match body with
+            | Rec (_, b, e) -> b, e
+            | _ -> assert false in
+          match expr2 with
+          | Var (Vlvar v)
+            when v = fun_name -> Rec (BNamed fun_name, arg, body)
+          | _ -> App (Rec (BNamed fun_name, arg, body), expr2)
+        end
+      else
+        begin
+          let id = name_of_pat info pvb_pat in
+          let e1 = expression info pvb_expr in
+          add_info_lvar info id pvb_loc;
+          let e2 = expression info e2 in
+          remove_info_lvar info id;
+          App (mk_lamb (BNamed id) e2, e1)
+        end
+  | Some (r, p) ->
+      let pl = transform info r p in
+      let e1 = expression info pvb_expr in
+      add_info_lvar info r pvb_loc;
+      List.iter (fun (var, _) -> add_info_lvar info var pvb_loc)  pl;
+      let e2 = inline_ptuple_as_expr info pl e2 in
+      List.iter (fun (var, _) -> remove_info_lvar info var)  pl;
+      remove_info_lvar info r;
+      App (mk_lamb (BNamed r) e2, e1)
+
+and value_binding_notbuiltin
           ~isrec
           (info : info)
           ({pvb_pat; pvb_expr; pvb_loc; _ }: P.value_binding) =
@@ -378,7 +462,7 @@ let rec value_binding_notbuiltin
       end
     with Not_found -> Hashtbl.add info.info_gvars id b in
   let remove_info_gvar (id, _) = Hashtbl.remove info.info_gvars id in
-  let id = name_of_pat info pvb_pat in
+  let id = decl_name_of_pat info pvb_pat in
   let (mvars, body) = split_coqparams info [] pvb_expr in
   List.iter (fun (id, _) -> add_info_gvar id BNone) mvars;
   let expr =
@@ -496,18 +580,28 @@ and expression info expr =
   | Pexp_construct (c,o) -> construct info (c,o)
   | Pexp_ident t -> Var (longident info t.txt t.loc)
   | Pexp_fun (Nolabel, None, pat, expr) ->
-     let id = name_of_pat info pat in
-     begin
-       match id with
-       | "<>" ->
-          let expr = expression info expr in
-          Rec (BAnon, BAnon, expr)
-       | _ ->
-          add_info_lvar info id pat.ppat_loc;
-          let expr = expression info expr in
-          remove_info_lvar info id;
-          Rec (BAnon, BNamed id, expr)
-     end
+      begin
+        match is_aliased_tuple_of_pat pat with
+        | None ->
+            begin
+              let id = name_of_pat info pat in
+              match id with
+              | "<>" -> mk_lamb BAnon (expression info expr)
+              | _ ->
+                  add_info_lvar info id pat.ppat_loc;
+                  let e = expression info expr in
+                  remove_info_lvar info id;
+                  mk_lamb (BNamed id) e
+            end
+        | Some (r, p) ->
+            let pl = transform info r p in
+            add_info_lvar info r pat.ppat_loc;
+            List.iter (fun (var, _) -> add_info_lvar info var pat.ppat_loc) pl;
+            let e = inline_ptuple_as_expr info pl expr in
+            List.iter (fun (var, _) -> remove_info_lvar info var) pl;
+            remove_info_lvar info r;
+            mk_lamb (BNamed r) e
+      end
   | Pexp_fun _ ->
      assert false (* TODO *)
   | Pexp_apply (f, [(_, e)]) when is_ignore f ->
@@ -613,28 +707,9 @@ and expression info expr =
      let expr2 = expression info e2 in
      If (expr1, expr2, Val (LitV LitUnit))
   | Pexp_let (Nonrecursive, [val_bind], e2) ->
-      let (id, _, expr) =
-          value_binding_notbuiltin ~isrec:false info val_bind in
-          add_info_lvar info id val_bind.pvb_pat.ppat_loc;
-          let expr2 = expression info e2 in
-          remove_info_lvar info id;
-          App (mk_lamb (BNamed id) expr2, expr)
-  | Pexp_let (Recursive, [{pvb_pat; _} as val_bind], e2) ->
-     let fun_name = name_of_pat info pvb_pat in
-     add_info_lvar info fun_name pvb_pat.ppat_loc;
-     let (_, _, expr) = value_binding_notbuiltin ~isrec:true info val_bind in
-     let expr2 = expression info e2 in
-     remove_info_lvar info fun_name;
-     begin
-       let arg, body = match expr with
-         | Rec (_, b, e) -> b, e
-         | _ -> assert false in
-       match expr2 with
-       | Var (Vlvar v) when v = fun_name ->
-           Rec (BNamed fun_name, arg, body)
-       | _ ->
-           App (Rec (BNamed fun_name, arg, body), expr2)
-     end
+     letin_notbuiltin ~isrec:false info val_bind e2
+  | Pexp_let (Recursive, [val_bind], e2) ->
+      letin_notbuiltin ~isrec:true info val_bind e2
   | Pexp_sequence (e1, e2) ->
       let expr1 = expression info e1 in
      let expr2 = expression info e2 in
@@ -889,9 +964,8 @@ and structure_attribute info a =
   match a.attr_name.txt with
   | "NOTATION" -> [PNotation get_payload]
   | "COMMENT" -> [PComment get_payload]
+  | "ocaml.text" -> [PDocComment get_payload]
   | _ -> assert false
-
-
 
   and program nms fname =
   let open Read in

@@ -44,6 +44,13 @@ let rec list_iter handler l =
      list_iter handler tail
   | None -> ()
 
+let rec list_map handler l =
+  match l with
+    Some a ->
+     let tail = list_map handler (snd a) in
+     list_cons (handler (fst a)) tail
+  | None -> list_nil
+
 let rec list_length l =
   match l with
     Some a -> 1 + list_length (snd a)
@@ -121,3 +128,6 @@ let rec list_forall test l =
      let h = fst p in
      let t = snd p in
      test h && list_forall test t
+
+let triple_list_map f1 f2 f3 l =
+  list_map (fun (((x,y),z) as _p) -> ((f1 x, f2 y), f3 z)) l
