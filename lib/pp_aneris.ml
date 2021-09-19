@@ -239,7 +239,7 @@ and pp_expr ?(paren=false) fmt = function
      fprintf fmt (protect_on paren "ReceiveFrom %a")
        (pp_expr ~paren:true) e1
   | SetReceiveTimeout (e1, e2, e3) ->
-     fprintf fmt (protect_on paren "SendToSetReceiveTimeout %a %a %a")
+     fprintf fmt (protect_on paren "SetReceiveTimeout %a %a %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
         (pp_expr ~paren:true) e3
   | ENone ->
