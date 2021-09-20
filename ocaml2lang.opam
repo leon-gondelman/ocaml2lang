@@ -5,6 +5,7 @@ maintainer: "Léon Gondelman <gondelman@cs.au.dk>"
 authors: [
   "Léon Gondelman"
   "Mário Pereira"
+  "Abel Nieto"
 ]
 license: "MIT"
 homepage: "https://github.com/leon-gondelman/ocaml2lang"
