@@ -120,20 +120,6 @@ let rec name_of_pat info pat = match pat.P.ppat_desc with
              info.info_fname pat.ppat_loc.loc_start.pos_lnum;
       exit 1
 
-let transform info r pat =
-  let rec aux path p = match p.P.ppat_desc with
-    | Ppat_var s -> [s.txt, path (Var (Vlvar r))]
-    | Ppat_constraint (p, _) -> [name_of_pat info p, path (Var (Vlvar r))]
-    | Ppat_construct ({txt = Lident "()"; _}, _) -> ["<>", path (Var (Vlvar r))]
-    | Ppat_tuple [p1; p2] ->
-        let fl = aux (fun x -> Fst (path x)) p1 in
-        let sl = aux (fun x -> Snd (path x)) p2 in
-        fl @ sl
-    | Ppat_tuple l when List.length l <> 2 ->
-        failwith "tuples that are not pairs are not supported"
-    | _ -> failwith "pattern not supported (not pair)"
-  in aux (fun x -> x) pat
-
 let add_info_lvar info id loc =
     begin match Hashtbl.find_opt info.info_gvars id with
     | None | Some BNone  -> Hashtbl.add info.info_lvars id ()
@@ -389,9 +375,56 @@ let rec split_coqparams info (acc : (ident * argty option) list) expr =
      begin sanity_check_params info expr; (List.rev acc, expr) end
 
 
-(* Extracts ident from OCaml patterns (fun names, formal args, etc) *)
+let transform info r pat =
+  let rec aux path p = match p.P.ppat_desc with
+    | Ppat_var s -> [s.txt, path (Var (Vlvar r))]
+    | Ppat_constraint (p, _) -> [name_of_pat info p, path (Var (Vlvar r))]
+    | Ppat_construct ({txt = Lident "()"; _}, _) -> ["<>", path (Var (Vlvar r))]
+    | Ppat_tuple [p1; p2] ->
+        let fl = aux (fun x -> Fst (path x)) p1 in
+        let sl = aux (fun x -> Snd (path x)) p2 in
+        fl @ sl
+    | Ppat_tuple l when List.length l <> 2 ->
+        failwith "tuples that are not pairs are not supported"
+    | _ -> failwith "pattern not supported (not pair)"
+  in aux (fun x -> x) pat
+
+
+let rec string_of_longident = function
+  | Lapply _ -> assert false (* TODO *)
+  | Lident s -> s
+  | Ldot (id, s) -> (string_of_longident id) ^ "_" ^ s
+
+let rec longident info t l = match t with
+  | Lapply _ -> assert false (* TODO *)
+  | Lident s ->
+     if Hashtbl.mem info.info_lvars s then Vlvar s
+     else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
+     else begin
+         Format.eprintf
+           ("\nIn file %s at line %d:\n  symbol: '%s' is undefined. (longident error)")
+           info.info_fname l.loc_start.pos_lnum s;
+         exit 1
+       end
+  | Ldot (t, s) ->
+     (* TODO: open external modules *)
+     let v = longident info t l in
+     match v with
+     | Vgvar x -> Vgvar (Gdot (x, s))
+     | Vlvar _ -> assert false
+
+
 let is_aliased_tuple_of_pat pat = match pat.P.ppat_desc with
   | Ppat_alias ({ ppat_desc = Ppat_tuple _; _} as p, s)  -> Some (s.txt, p)
+  | _ -> None
+
+(* Extracts ident from OCaml patterns (fun names, formal args, etc) *)
+let is_tuple_of_pat info (pat, e) = match pat.P.ppat_desc, e.P.pexp_desc with
+  | (Ppat_alias ({ ppat_desc = Ppat_tuple _; _} as p, s), _) ->
+      Some (transform info s.txt p, s.txt, true)
+  | (Ppat_tuple [_;_], Pexp_ident t) ->
+      let s = string_of_longident t.txt in
+      Some (transform info s pat, s, false)
   | _ -> None
 
 let rec inline_ptuple_as_expr info path_list (body : P.expression) =
@@ -408,7 +441,7 @@ and letin_notbuiltin
           (info : info)
           ({pvb_pat; pvb_expr; pvb_loc; _ }: P.value_binding)
           (e2 : P.expression) =
-  match is_aliased_tuple_of_pat pvb_pat with
+  match is_tuple_of_pat info (pvb_pat, pvb_expr) with
   | None ->
       if isrec
       then
@@ -435,8 +468,7 @@ and letin_notbuiltin
           remove_info_lvar info id;
           App (mk_lamb (BNamed id) e2, e1)
         end
-  | Some (r, p) ->
-      let pl = transform info r p in
+  | Some (pl, r, true) ->
       let e1 = expression info pvb_expr in
       add_info_lvar info r pvb_loc;
       List.iter (fun (var, _) -> add_info_lvar info var pvb_loc)  pl;
@@ -444,11 +476,18 @@ and letin_notbuiltin
       List.iter (fun (var, _) -> remove_info_lvar info var)  pl;
       remove_info_lvar info r;
       App (mk_lamb (BNamed r) e2, e1)
+  | Some (pl, r, false) ->
+      add_info_lvar info r pvb_loc;
+      List.iter (fun (var, _) -> add_info_lvar info var pvb_loc) pl;
+      let e2 = inline_ptuple_as_expr info pl e2 in
+      List.iter (fun (var, _) -> remove_info_lvar info var)  pl;
+      remove_info_lvar info r;
+     e2
 
 and value_binding_notbuiltin
-          ~isrec
-          (info : info)
-          ({pvb_pat; pvb_expr; pvb_loc; _ }: P.value_binding) =
+    ~isrec
+    (info : info)
+    ({pvb_pat; pvb_expr; pvb_loc; _ }: P.value_binding) =
   let add_info_gvar id b =
     try
       begin
@@ -478,28 +517,6 @@ and value_binding_notbuiltin
   List.iter remove_info_gvar mvars;
   (id, mvars, expr)
 
-and string_of_longident = function
-  | Lapply _ -> assert false (* TODO *)
-  | Lident s -> s
-  | Ldot (id, s) -> (string_of_longident id) ^ "_" ^ s
-
-and longident info t l = match t with
-  | Lapply _ -> assert false (* TODO *)
-  | Lident s ->
-     if Hashtbl.mem info.info_lvars s then Vlvar s
-     else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
-     else begin
-         Format.eprintf
-           ("\nIn file %s at line %d:\n  symbol: '%s' is undefined. (longident error)")
-           info.info_fname l.loc_start.pos_lnum s;
-         exit 1
-       end
-  | Ldot (t, s) ->
-     (* TODO: open external modules *)
-     let v = longident info t l in
-     match v with
-     | Vgvar x -> Vgvar (Gdot (x, s))
-     | Vlvar _ -> assert false
 
 and expression info expr =
   let is_fst P.{pexp_desc; _} = match pexp_desc with

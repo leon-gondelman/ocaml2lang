@@ -9,6 +9,18 @@ let f () =
   let (((x,y),z),w) as t2 = (((1,2),3),4) in
   l + r + x
 
+let g x =
+  let (a,b) = x in
+  let (c,d) = a in
+  let (e,f) = b in
+  c + d + e + f
+
+let h x =
+  let ((a,b),(c,d)) = x in
+    a + b + c + d
+
+let f z =
+  fun ((x,z) as w) -> w
 
 (* let f x = *)
   (* let ((x,y),(z,w)) as t = x in *)
