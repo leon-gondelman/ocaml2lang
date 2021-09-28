@@ -218,6 +218,10 @@ and pp_expr ?(paren=false) fmt = function
   | Store (e1, e2) ->
       fprintf fmt (protect_on paren "%a <- %a")
         (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+  | CAS (e1, e2, e3) ->
+      fprintf fmt (protect_on paren "CAS %a %a %a")
+        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
+        (pp_expr ~paren:true) e3
   | MakeAddress  (e1, e2) ->
      fprintf fmt (protect_on paren "MakeAddress %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
@@ -263,7 +267,6 @@ and pp_expr ?(paren=false) fmt = function
        (pp_print_list ~pp_sep:pp_newline pp_record_field_def) iel
   | EField (e, f) ->
       fprintf fmt ((*protect_on paren*) "%a.(%s)") (pp_expr  ~paren:true) e f
-  | CAS  _ -> assert false
   | Start  _ -> assert false
 
 and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with

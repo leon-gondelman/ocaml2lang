@@ -169,6 +169,8 @@ let node_from_builtin f s args = match s, args with
      EAcquire expr
   | "Release", [expr] ->
      ERelease expr
+  | "CAS", [expr1; expr2; expr3] ->
+     CAS (expr1, expr2, expr3)
   | s, _ ->
       Format.eprintf
       "\nIn file %s \n  the built-in %s is not supported.\n"
@@ -258,6 +260,8 @@ let rec normalize_expr e0 = match e0 with
        Load (normalize_expr e)
     | Store (e1, e2)  ->
        Store (normalize_expr e1, normalize_expr e2)
+    | CAS (e1, e2, e3) ->
+       CAS (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | MakeAddress (e1, e2)  ->
         MakeAddress (normalize_expr e1, normalize_expr e2)
     | GetAddrInfo e ->
@@ -285,7 +289,7 @@ let rec normalize_expr e0 = match e0 with
          (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | ERecord iel ->
        ERecord (List.map (fun (id, e) -> (id, normalize_expr e)) iel)
-    | Var _ | Val _ | CAS _  | Start _ | EField _ -> e0
+    | Var _ | Val _ | Start _ | EField _ -> e0
 
 let pp_comma ppf () = Format.fprintf ppf ", "
 let pp_list_list fmt ll =

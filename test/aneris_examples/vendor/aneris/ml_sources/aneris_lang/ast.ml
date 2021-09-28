@@ -80,8 +80,11 @@ let[@builtinAtom "SetReceiveTimeout"] setReceiveTimeout sh n m =
   let fm = makeDecimal m in
   Unix.setsockopt_float sh SO_RCVTIMEO (fn +. fm)
 
+let tpool = Domainslib.Task.setup_pool ~num_additional_domains:4
+
 let[@builtinAtom "Fork"] fork f e =
-  let _ = Thread.create f e in ()
+  let _promise = Domainslib.Task.async tpool (fun () -> f e) in
+  ()
 
 let[@builtinAtom "FindFrom"] findFrom e0 e1 e2 =
   String.index_from_opt e0 e1 e2
@@ -120,3 +123,8 @@ let[@builtinAtom "Release"] release = fun l -> Mutex.unlock l
 type 'a serializer =
   { s_ser : 'a -> string;
     s_deser : string -> 'a}
+
+let (!) = Atomic.get
+let (:=) = Atomic.set
+let ref = Atomic.make
+let[@builtinAtom "CAS"] cas = Atomic.compare_and_set

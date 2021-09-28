@@ -4,4 +4,4 @@
   (wrapped false)
   (name aneris)
   (flags :standard -rectypes)
-  (libraries unix threads ocaml-compiler-libs.common))
+  (libraries unix threads ocaml-compiler-libs.common domainslib))
