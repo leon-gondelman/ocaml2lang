@@ -1,7 +1,7 @@
 open Unsafe
 
 
-let () = ignore(42); ()
+(* let () = ignore(42); () *)
 
 
 let f () =
