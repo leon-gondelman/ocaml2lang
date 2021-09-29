@@ -83,6 +83,7 @@ type expr =
   (* Ocaml records to be translated to Coq records *)
   | ERecord of (ident * expr) list
   | EField of (expr * ident)
+  | EUnsafe of string
 
 and branch = ident * expr
 

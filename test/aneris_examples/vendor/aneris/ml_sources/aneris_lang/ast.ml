@@ -127,4 +127,7 @@ type 'a serializer =
 let (!) = Atomic.get
 let (:=) = Atomic.set
 let ref = Atomic.make
+
 let[@builtinAtom "CAS"] cas = Atomic.compare_and_set
+
+let unsafe f = let _x = f () in ()

@@ -9,3 +9,4 @@ ML_SOURCES:
 	tuple/tuple.ml
 
 ML_DEPENDENCIES:
+	tuple/

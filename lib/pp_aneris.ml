@@ -268,6 +268,7 @@ and pp_expr ?(paren=false) fmt = function
   | EField (e, f) ->
       fprintf fmt ((*protect_on paren*) "%a.(%s)") (pp_expr  ~paren:true) e f
   | Start  _ -> assert false
+  | EUnsafe s -> fprintf fmt "#() (* %s *)" s
 
 and pp_case c2 b2 e2 c3 b3 fmt e3 = match b2, b3 with
   | BAnon, BNamed x ->

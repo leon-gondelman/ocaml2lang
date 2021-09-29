@@ -289,7 +289,7 @@ let rec normalize_expr e0 = match e0 with
          (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | ERecord iel ->
        ERecord (List.map (fun (id, e) -> (id, normalize_expr e)) iel)
-    | Var _ | Val _ | Start _ | EField _ -> e0
+    | Var _ | Val _ | Start _ | EField _ | EUnsafe _ -> e0
 
 let pp_comma ppf () = Format.fprintf ppf ", "
 let pp_list_list fmt ll =
@@ -406,7 +406,7 @@ let rec longident info t l = match t with
      else if Hashtbl.mem info.info_gvars s then Vgvar (Gvar s)
      else begin
          Format.eprintf
-           ("\nIn file %s at line %d:\n  symbol: '%s' is undefined. (longident error)")
+           ("\nIn file %s at line %d:\n  symbol: '%s' is undefined. (longident error)\n%!")
            info.info_fname l.loc_start.pos_lnum s;
          exit 1
        end
@@ -430,6 +430,55 @@ let is_tuple_of_pat info (pat, e) = match pat.P.ppat_desc, e.P.pexp_desc with
       let s = string_of_longident t.txt in
       Some (transform info s pat, s, false)
   | _ -> None
+
+let input_line_opt ic =
+  try Some (input_line ic)
+  with End_of_file -> None
+
+let nth_line (n1, c1) (n2, c2) filename =
+  let ic = open_in filename in
+  let rec aux acc cn i =
+    match input_line_opt ic with
+    | Some line ->
+        let len = String.length line in
+        if i = n1 then
+          begin
+            let clm = c1 - cn - i in
+            let str1 = "unsafe" ^ String.sub line clm (len - clm) in
+            if n1 = n2 then
+              begin
+                close_in ic;
+                str1  :: acc
+              end
+            else if n1 < n2
+            then aux (str1 :: acc) (cn + String.length line) (succ i)
+            else assert false
+          end
+        else if i = n2 then
+          begin
+            close_in ic;
+            let clm = c2 - cn - i in
+            (String.sub line 0 clm) :: acc
+          end
+        else if i < n2
+        then
+          if i < n1 then aux acc (cn + String.length line) (succ i)
+          else aux (line :: acc) (cn + String.length line) (succ i)
+        else assert false
+    | None ->
+        close_in ic;
+        failwith "end of file reached"
+  in
+  let strl = aux [] 0 1 in
+  String.concat "\n" (List.rev strl)
+
+let string_of_unsafe f (e1 : P.expression) =
+  let pos1 = e1.pexp_loc.loc_start in
+  let pos2 = e1.pexp_loc.loc_end in
+  let (l1, c1) = pos1.pos_lnum, pos1.pos_cnum in
+  let (l2, c2) = pos2.pos_lnum, pos2.pos_cnum in
+  let line = nth_line (l1, c1) (l2, c2) f in
+  line
 
 let rec inline_ptuple_as_expr info path_list (body : P.expression) =
   let rec aux fexpr l = match l with
@@ -583,6 +632,9 @@ and expression info expr =
   let is_ignore P.{pexp_desc; _} = match pexp_desc with
     | Pexp_ident {txt = Lident "ignore"; _} -> true
     | _ -> false in
+  let is_unsafe P.{pexp_desc; _} = match pexp_desc with
+    | Pexp_ident {txt = Lident "unsafe"; _} -> true
+    | _ -> false in
   let mk_app e1 args =
     let find_builtin id = Hashtbl.find info.info_gvars id in
     let mk_app acc e = App (acc, e) in
@@ -626,7 +678,9 @@ and expression info expr =
   | Pexp_fun _ ->
      assert false (* TODO *)
   | Pexp_apply (f, [(_, e)]) when is_ignore f ->
-     expression info e
+      expression info e
+  | Pexp_apply (f, [(_, e1)]) when is_unsafe f ->
+      EUnsafe (string_of_unsafe info.info_fname e1)
   | Pexp_apply (f, [(_, e)]) when is_fst f ->
      Fst (expression info e)
   | Pexp_apply (f, [(_, e)]) when is_snd f ->
