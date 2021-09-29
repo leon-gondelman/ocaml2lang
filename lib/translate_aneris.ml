@@ -919,9 +919,20 @@ and structure_item info str_item =
      else
        let (id, mvars, expr) =
          value_binding_notbuiltin ~isrec:false info val_bind in
-       add_info_gvar id BNone;
-       add_known_builtin id BNone;
-       [PDecl (id, mvars, expr)]
+       if id <> "<>" then
+         begin
+           add_info_gvar id BNone;
+           add_known_builtin id BNone;
+           [PDecl (id, mvars, expr)]
+         end
+       else
+         begin
+           Format.eprintf
+           "\nIn file %s at line %d:\n glob decl \
+            'let () = ...' is not allowed.\n"
+           info.info_fname val_bind.pvb_pat.ppat_loc.loc_start.pos_lnum;
+         exit 1
+         end
   (* recursive let binding with no mutual recursion *)
   | Pstr_value (Recursive, [val_bind]) ->
      if is_builtin info then

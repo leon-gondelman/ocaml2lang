@@ -1,6 +1,9 @@
 open Unsafe
 
 
+let () = ignore(42); ()
+
+
 let f () =
   unsafe (fun () ->
       Printf.printf "multi-line";
