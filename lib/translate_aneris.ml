@@ -142,7 +142,9 @@ let node_from_builtin f s args = match s, args with
   | "SocketBind", [expr1; expr2] ->
      SocketBind (expr1, expr2)
   | "SendTo", [expr1; expr2; expr3] ->
-     SendTo (expr1, expr2, expr3)
+      SendTo (expr1, expr2, expr3)
+  | "SendToSim", [expr1; expr2; expr3] ->
+      SendTo (expr1, expr2, expr3)
   | "ReceiveFrom", [expr] ->
      ReceiveFrom expr
   | "SetReceiveTimeout", [expr1; expr2; expr3] ->
