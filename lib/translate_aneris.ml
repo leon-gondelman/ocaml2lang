@@ -680,7 +680,9 @@ and expression info expr =
   | Pexp_fun _ ->
      assert false (* TODO *)
   | Pexp_apply (f, [(_, e)]) when is_ignore f ->
-      expression info e
+     let expr1 = expression info e in
+     let expr2 = Val (LitV LitUnit) in
+     App (mk_lamb BAnon expr2, expr1)
   | Pexp_apply (f, [(_, e1)]) when is_unsafe f ->
       EUnsafe (string_of_unsafe info.info_fname e1)
   | Pexp_apply (f, [(_, e)]) when is_fst f ->

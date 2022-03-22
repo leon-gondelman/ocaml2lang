@@ -27,4 +27,7 @@ build: [
 depends: [
    "dune"  {>= "2.9.0"}
    "ocaml" {>= "4.11"}
+   "domainslib" {= "0.3.0"}
+   "menhir" {>= "20211128"}
+   "ocaml-compiler-libs" {>= "v0.12.4"}
 ]
