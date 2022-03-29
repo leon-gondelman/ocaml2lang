@@ -151,6 +151,8 @@ let node_from_builtin f s args = match s, args with
      SetReceiveTimeout (expr1, expr2, expr3)
   | "Substring", [expr1; expr2; expr3] ->
      Substring (expr1, expr2, expr3)
+  | "Rand", [expr] ->
+      Rand expr
   | "FindFrom", [expr1; expr2; expr3] ->
      FindFrom (expr1, expr2, expr3)
   | "Fork", [f; e] ->
@@ -250,6 +252,7 @@ let rec normalize_expr e0 = match e0 with
        FindFrom (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | Substring (e1, e2, e3) ->
        Substring (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | Rand e -> Rand (normalize_expr e)
     | Fst e -> Fst (normalize_expr e)
     | Snd e -> Snd (normalize_expr e)
     | Case (e, (s1, e1), (s2, e2)) ->

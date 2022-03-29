@@ -190,6 +190,8 @@ and pp_expr ?(paren=false) fmt = function
      fprintf fmt (protect_on paren "Substring %a %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
        (pp_expr ~paren:true) e3
+  | Rand e ->
+      fprintf fmt (protect_on paren "Rand %a") (pp_expr ~paren:true) e
   | Pair _ as p ->
      let tuple = list_of_pair p in
      fprintf fmt "(@[<h>%a@])"

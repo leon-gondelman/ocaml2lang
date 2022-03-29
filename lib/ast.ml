@@ -49,6 +49,7 @@ type expr =
   | If of expr * expr * expr
   | FindFrom of expr * expr * expr
   | Substring of expr * expr * expr
+  | Rand of expr
   | Pair of expr * expr
   | Fst of expr
   | Snd of expr
