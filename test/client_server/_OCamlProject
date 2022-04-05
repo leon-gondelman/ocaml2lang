@@ -1,0 +1,16 @@
+OUTPUT_ROOT:
+	ml_sources theories
+
+IMPORT_PATH_PREFIX:
+	ml_sources aneris_examples
+	vendor/aneris/ml_sources aneris
+
+ML_SOURCES:
+	reliable_communication/client_server_code.ml
+
+ML_DEPENDENCIES:
+	reliable_communication/
+	-V vendor/aneris/ml_sources/aneris_lang/
+	-V vendor/aneris/ml_sources/aneris_lang/lib
+	-V vendor/aneris/ml_sources/aneris_lang/lib/serialization
+	-V vendor/aneris/ml_sources/aneris_lang/lib/vector_clock
