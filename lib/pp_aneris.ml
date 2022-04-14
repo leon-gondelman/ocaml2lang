@@ -262,6 +262,22 @@ and pp_expr ?(paren=false) fmt = function
      fprintf fmt (protect_on paren "acquire %a") (pp_expr ~paren:true) e
   | ERelease e ->
      fprintf fmt (protect_on paren "release %a") (pp_expr ~paren:true) e
+  | ENewMonitor e ->
+     fprintf fmt (protect_on paren "new_monitor %a") (pp_expr ~paren:true) e
+  | EMonitorTryAcquire e ->
+      fprintf fmt (protect_on paren "monitor_try_acquire %a") (pp_expr ~paren:true) e
+  | EMonitorAcquire e ->
+     fprintf fmt (protect_on paren "monitor_acquire %a") (pp_expr ~paren:true) e
+  | EMonitorRelease e ->
+     fprintf fmt (protect_on paren "monitor_release %a") (pp_expr ~paren:true) e
+  | EMonitorSignal e ->
+      fprintf fmt (protect_on paren "monitor_signal %a") (pp_expr ~paren:true) e
+  | EMonitorBroadcast e ->
+      fprintf fmt (protect_on paren "monitor_broadcast %a") (pp_expr ~paren:true) e
+  | EMonitorWait e ->
+      fprintf fmt (protect_on paren "monitor_wait %a")
+        (pp_expr ~paren:true) e
+
   | ERecord iel ->
      let pp_record_field_def fmt (fd, e) =
        fprintf fmt "@[    %s := %a;@]" fd (pp_expr ~paren:false) e in

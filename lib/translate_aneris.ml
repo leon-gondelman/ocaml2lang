@@ -173,6 +173,20 @@ let node_from_builtin f s args = match s, args with
      EAcquire expr
   | "Release", [expr] ->
      ERelease expr
+  | "New_Monitor", [expr] ->
+     ENewMonitor expr
+  | "Monitor_try_acquire", [expr] ->
+     EMonitorTryAcquire expr
+  | "Monitor_acquire", [expr] ->
+     EMonitorAcquire expr
+  | "Monitor_release", [expr] ->
+     EMonitorRelease expr
+  | "Monitor_signal", [expr] ->
+     EMonitorSignal expr
+  | "Monitor_broadcast", [expr] ->
+     EMonitorBroadcast expr
+  | "Monitor_wait", [expr] ->
+     EMonitorWait expr
   | "CAS", [expr1; expr2; expr3] ->
      CAS (expr1, expr2, expr3)
   | s, _ ->
@@ -294,7 +308,7 @@ let rec normalize_expr e0 = match e0 with
          (normalize_expr e1, normalize_expr e2, normalize_expr e3)
     | ERecord iel ->
        ERecord (List.map (fun (id, e) -> (id, normalize_expr e)) iel)
-    | Var _ | Val _ | Start _ | EField _ | EUnsafe _ -> e0
+    | Var _ | Val _ | Start _ | EField _ | EUnsafe _ | _ -> e0
 
 let pp_comma ppf () = Format.fprintf ppf ", "
 let pp_list_list fmt ll =

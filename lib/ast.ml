@@ -76,6 +76,13 @@ type expr =
   | ETryAcquire of expr
   | EAcquire of expr
   | ERelease of expr
+  | ENewMonitor of expr
+  | EMonitorTryAcquire of expr
+  | EMonitorAcquire of expr
+  | EMonitorRelease of expr
+  | EMonitorWait of expr
+  | EMonitorSignal of expr
+  | EMonitorBroadcast of expr
   (* Aneris expressions without correspondance in OCaml *)
   | Start of base_lit * expr
   | CAS of expr * expr * expr
