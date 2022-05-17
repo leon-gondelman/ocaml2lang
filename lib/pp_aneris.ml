@@ -284,8 +284,8 @@ and pp_expr ?(paren=false) fmt = function
      fprintf fmt "{|@\n%a@\n|}"
        (pp_print_list ~pp_sep:pp_newline pp_record_field_def) iel
   | EField (e, f) ->
-      (* fprintf fmt ((\*protect_on paren*\) "%a.(%s)") (pp_expr  ~paren:true) e f *)
-      fprintf fmt ((*protect_on paren*) "(%s %a)") f (pp_expr  ~paren:true) e
+      fprintf fmt ((*protect_on paren*) "%a.(%s)") (pp_expr  ~paren:true) e f
+      (* fprintf fmt ((\*protect_on paren*\) "(%s %a)") f (pp_expr  ~paren:true) e *)
   | Start  _ -> assert false
   | EUnsafe s -> fprintf fmt "#() (* %s *)" s
 
