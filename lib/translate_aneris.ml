@@ -137,8 +137,8 @@ let node_from_builtin f s args = match s, args with
       MakeAddress (expr1, expr2)
   | "GetAddrInfo", [expr] ->
       GetAddrInfo expr
-  | "NewSocket", [expr1; expr2; expr3] ->
-     NewSocket (expr1, expr2, expr3)
+  | "NewSocket", [Val (LitV LitUnit)] ->
+     NewSocket
   | "SocketBind", [expr1; expr2] ->
      SocketBind (expr1, expr2)
   | "SendTo", [expr1; expr2; expr3] ->
@@ -285,8 +285,8 @@ let rec normalize_expr e0 = match e0 with
         MakeAddress (normalize_expr e1, normalize_expr e2)
     | GetAddrInfo e ->
         GetAddrInfo (normalize_expr e)
-    | NewSocket (e1, e2, e3) ->
-       NewSocket (normalize_expr e1, normalize_expr e2, normalize_expr e3)
+    | NewSocket  ->
+       NewSocket
     | SocketBind  (e1, e2) ->
        SocketBind (normalize_expr e1, normalize_expr e2)
     | SendTo (e1, e2, e3) ->
@@ -910,13 +910,7 @@ and construct info = function
      InjR (expression info expr)
      (* let e = expression info expr in
       * begin match e with Val v -> Val (InjRV v) | _ -> InjR e end *)
-  | ({txt = Lident "PF_INET"; _}, None) ->
-     Val (LitV (LitAddressFamily PF_INET))
-  | ({txt = Lident "SOCK_DGRAM"; _}, None) ->
-     Val (LitV (LitSocketType SOCK_DGRAM))
-  | ({txt = Lident "IPPROTO_UDP"; _}, None) ->
-     Val (LitV (LitProtocol IPPROTO_UDP))
-  | ({txt = Lident s; loc = loc},_) ->
+   | ({txt = Lident s; loc = loc},_) ->
      Format.eprintf
        "\nIn file %s at line %d:\n  The value '%s' is currently not supported.\n"
        info.info_fname loc.loc_start.pos_lnum s;

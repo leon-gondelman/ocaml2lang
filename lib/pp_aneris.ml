@@ -70,10 +70,6 @@ let pp_litv fmt = function
   | LitBool false -> fprintf fmt "#false"
   | LitUnit -> fprintf fmt "#()"
   | LitString s -> fprintf fmt "#\"%s\"" s
-  | LitAddressFamily PF_INET ->  fprintf fmt "#PF_INET"
-  | LitSocketType SOCK_DGRAM ->  fprintf fmt "#SOCK_DGRAM"
-  | LitProtocol IPPROTO_UDP ->  fprintf fmt "#IPPROTO_UDP"
-
 
 let rec pp_val ?(paren=false) fmt = function
   | LitV bl -> fprintf fmt "%a" pp_litv bl
@@ -230,10 +226,8 @@ and pp_expr ?(paren=false) fmt = function
   | GetAddrInfo e ->
      fprintf fmt (protect_on paren "GetAddressInfo %a")
        (pp_expr ~paren:true) e
-  | NewSocket  (e1, e2, e3) ->
-      fprintf fmt (protect_on paren "NewSocket %a %a %a")
-        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
-        (pp_expr ~paren:true) e3
+  | NewSocket ->
+      fprintf fmt (protect_on paren "NewSocket #()")
   | SocketBind (e1, e2) ->
      fprintf fmt (protect_on paren "SocketBind %a %a")
        (pp_expr ~paren:true) e1 (pp_expr ~paren:true) e2
