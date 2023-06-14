@@ -65,7 +65,8 @@ let pp_var fmt = function
   | Vgvar v -> fprintf fmt "%a" pp_gvar v
 
 let pp_litv fmt = function
-  | LitInt n -> fprintf fmt "#%d" n
+  | LitInt n when n >= 0 -> fprintf fmt "#%d" n
+  | LitInt n -> fprintf fmt "#(%d)" n
   | LitBool true -> fprintf fmt "#true"
   | LitBool false -> fprintf fmt "#false"
   | LitUnit -> fprintf fmt "#()"
