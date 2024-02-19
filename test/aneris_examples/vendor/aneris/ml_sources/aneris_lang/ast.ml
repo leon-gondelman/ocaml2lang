@@ -80,7 +80,7 @@ let[@builtinAtom "SetReceiveTimeout"] setReceiveTimeout sh n m =
   let fm = makeDecimal m in
   Unix.setsockopt_float sh SO_RCVTIMEO (fn +. fm)
 
-let tpool = Domainslib.Task.setup_pool ~num_additional_domains:4
+let tpool = Domainslib.Task.setup_pool ~num_domains:4 ()
 
 let[@builtinAtom "Fork"] fork f e =
   let _promise = Domainslib.Task.async tpool (fun () -> f e) in

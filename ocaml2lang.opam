@@ -25,9 +25,9 @@ build: [
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 depends: [
-   "dune"  {>= "2.9.0"}
-   "ocaml" {>= "4.11"}
-   "domainslib" {= "0.3.0"}
-   "menhir" {>= "20211128"}
+   "dune"  {>= "3.13.1"}
+   "ocaml" {>= "5.1.1"}
+   "domainslib" {= "0.5.0"}
+   "menhir" {>= "20231231"}
    "ocaml-compiler-libs" {>= "v0.12.4"}
 ]

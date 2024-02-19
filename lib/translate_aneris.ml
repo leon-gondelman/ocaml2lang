@@ -864,18 +864,18 @@ and pattern info P.{pc_lhs; pc_rhs; _} =
        assert false (* not autorized as a top-level pattern *)
     | Ppat_construct ({txt = Lident "None"; _}, None) ->
        "None", BAnon
-    | Ppat_construct ({txt = Lident "InjL"; _}, Some p) when is_unit p ->
+    | Ppat_construct ({txt = Lident "InjL"; _}, Some (_, p)) when is_unit p ->
        "InjL", BAnon
-    | Ppat_construct ({txt = Lident "InjL"; _}, Some p) ->
+    | Ppat_construct ({txt = Lident "InjL"; _}, Some (_, p)) ->
        let v = get_var_of_pat p in
        add_info_lvar v p.ppat_loc;
        "InjL", BNamed v
-    | Ppat_construct ({txt = Lident "InjR"; _}, Some p) ->
+    | Ppat_construct ({txt = Lident "InjR"; _}, Some (_, p)) ->
        let v = get_var_of_pat p in
        add_info_lvar v p.ppat_loc;
        "InjR", BNamed v
     | Ppat_construct ({txt = Lident p; _},
-                      Some ({ppat_desc = Ppat_var s; _} as pat)) ->
+                      Some (_, ({ppat_desc = Ppat_var s; _} as pat))) ->
        add_info_lvar s.txt pat.ppat_loc;
        p, BNamed s.txt
     | _ ->
