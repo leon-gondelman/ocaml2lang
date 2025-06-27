@@ -11,7 +11,7 @@ Pin the `ocaml2lang` package:
 
 This will produce an executable `o2a`. After installation succeeds, you can try `o2a` by doing
 ```
-  $ o2a --h
+  $ o2a --help
 ```
 
 How to use
